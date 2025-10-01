@@ -28,16 +28,24 @@ O projeto é organizado por pacotes que refletem as fases de compilação, garan
 
 ijgm-project/
 ├── lexer/             # Analisador Léxico
+
 │   ├── Token.java         # Representa o lexema e o tipo (com linha/coluna)
 │   └── Lexer.java         # Realiza a tokenização e detecção de erros léxicos
+
 ├── parser/            # Analisador Sintático
+
 │   ├── ast/               # Árvore de Sintaxe Abstrata (Padrão Composite)
 │   └── Parser.java        # Constrói a AST a partir dos tokens
+
 ├── visitor/           # Interpretação e Visualização (Padrão Visitor)
+
 │   ├── InterpreterVisitor.java # Executa a lógica e a análise semântica
 │   └── PrintVisitor.java       # Imprime a estrutura da AST
+
 ├── symbol_table/      # Análise Semântica
+
 │   └── SymbolTable.java   # Armazena variáveis, tipos e valores
+
 └── Main.java          # Ponto de entrada do compilador
 📐 Aplicação dos Padrões de Projeto
 O projeto utiliza três padrões de projeto essenciais para compiladores:
