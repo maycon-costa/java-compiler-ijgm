@@ -1,0 +1,48 @@
+/*
+ * Este é um teste completo para validar todas as funcionalidades do compilador.
+ */
+
+// 1. Declaracao de variaveis de diferentes tipos
+int a;
+int b;
+string nome;
+bool ativo;
+float valor;
+bool isDone; // tive q mover a declaração pro topo 
+
+// 2. Atribuicao e expressoes aritmeticas
+a = 15;
+b = (a * 2) - 10;
+print b;
+
+// 3. Atribuicao de tipos diferentes (com validacao)
+nome = "Compilador";
+ativo = true;
+valor = 10.5;
+
+// 4. Estrutura condicional 'if/else' com operadores de comparacao
+if (a > 10 && b == 20) {
+    print "A condicao do IF eh verdadeira!";
+    if (a != 20 || b < 10) {
+        print "Sub-condicao tambem eh verdadeira!";
+    }
+} else {
+    print "Condicao do IF eh falsa.";
+}
+
+// 5. Estrutura de repeticao 'while'
+while (b > 15) {
+    b = b - 1;
+    print b;
+}
+
+// 6. Teste de operacoes com string
+print "Finalizado: " + nome;
+
+// 7. Teste final de atribuicao de booleano e condicao
+isDone = false;
+if (isDone) {
+    print "Este texto nao deve aparecer.";
+} else {
+    print "Teste de booleano com FALSE.";
+}

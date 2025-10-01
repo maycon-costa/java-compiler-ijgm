@@ -1,0 +1,20 @@
+# Ignorar arquivos binários e de compilação
+*.class
+*.jar
+*.zip
+
+# Ignorar pastas de ambiente de desenvolvimento (IDE)
+/bin/
+/out/
+/target/
+/.idea/
+/.vscode/
+/.settings/
+/temp/
+
+# Arquivos específicos de sistemas operacionais
+.DS_Store
+Thumbs.db
+
+# Ignorar dados de workspace de ferramentas específicas (ex: VS Code Java)
+/jdt_ws/
