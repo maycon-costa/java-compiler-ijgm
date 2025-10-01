@@ -1,17 +1,10 @@
-COMPILADOR SIMPLIFICADO EM JAVA (ijgm-project):
-
+☕ Compilador Simplificado em JAVA (Projeto ijgm-project)
 Este projeto implementa um compilador básico para uma linguagem imperativa simplificada, desenvolvido em Java. O foco do projeto foi a aplicação correta de conceitos de Programação Orientada a Objetos (POO) e a utilização de Padrões de Projeto na construção das fases de compilação.
 
--------------------------------------------------------------------------------------------------------------------------------------
-
-FUNCIONALIDADES PRINCIPAIS:
-
+🌟 Funcionalidades Principais
 O compilador processa um código-fonte e executa as três fases principais: Análise Léxica, Análise Sintática e Análise Semântica (Interpretação).
 
--------------------------------------------------------------------------------------------------------------------------------------
-
-CARACTERÍSTICAS DA LINGUAGEM IMPLEMENTADA:
-
+⚙️ Características da Linguagem Implementada
 Tipos Estáticos: Suporte para declaração e checagem de tipos (int, float, bool, string).
 
 Comandos de Controle:
@@ -30,10 +23,7 @@ Lógicos: && (AND) e || (OR).
 
 Literiais: Reconhecimento de números inteiros, números de ponto flutuante, strings e booleanos (true/false).
 
--------------------------------------------------------------------------------------------------------------------------------------
-
-ARQUITETURA E ESTRUTURA DO PROJETO:
-
+🧱 Arquitetura e Estrutura do Projeto
 O projeto é organizado por pacotes que refletem as fases de compilação, garantindo a modularidade e a manutenibilidade.
 
 ijgm-project/
@@ -49,48 +39,33 @@ ijgm-project/
 ├── symbol_table/      # Análise Semântica
 │   └── SymbolTable.java   # Armazena variáveis, tipos e valores
 └── Main.java          # Ponto de entrada do compilador
-
--------------------------------------------------------------------------------------------------------------------------------------
-
-APLICAÇÃO DOS PADRÕES DE PROJETO:
-
+📐 Aplicação dos Padrões de Projeto
 O projeto utiliza três padrões de projeto essenciais para compiladores:
 
-COMPOSITE:	Pacote parser/ast	Cria a hierarquia de nós da AST (Statement, Expression, WhileStatement, BinaryExpression, etc.), permitindo que o cliente (Visitor) trate comandos complexos e simples de maneira uniforme.
+Padrão de Projeto	Local de Aplicação	Objetivo
+COMPOSITE	Pacote parser/ast	Cria a hierarquia de nós da AST (Statement, Expression, WhileStatement, BinaryExpression, etc.), permitindo que o cliente (Visitor) trate comandos complexos e simples de maneira uniforme.
+VISITOR	Pacote visitor	Separa a lógica de travessia/operação (Interpretar, Imprimir) da estrutura (AST). Temos InterpreterVisitor (execução) e PrintVisitor (visualização).
+ITERATOR	Classe Parser.java	O Parser consome a lista de tokens do Lexer através de um Iterator (de forma implícita, usando List.iterator()), garantindo o consumo sequencial e controlado dos tokens.
 
-VISITOR:	Pacote visitor	Separa a lógica de travessia/operação (Interpretar, Imprimir) da estrutura (AST). Temos InterpreterVisitor (execução) e PrintVisitor (visualização).
+🛠️ Detalhes da Implementação
+1. Analisador Léxico (Lexer.java)
+Técnica: Autômato manual (AFD).
 
-ITERATOR:	Classe Parser.java	O Parser consome a lista de tokens do Lexer através de um Iterator (de forma implícita, usando List.iterator()), garantindo o consumo sequencial e controlado dos tokens.
+Tratamento de Erros: Detecção de erros léxicos (caractere inválido) e relatório com indicação precisa de linha e coluna.
 
--------------------------------------------------------------------------------------------------------------------------------------
+Funcionalidades: Suporte a números inteiros, ponto flutuante, strings (com aspas), operadores de um e dois caracteres, e comentários (// e /* */).
 
-DETALHES DA IMPLEMENTAÇÃO:
+2. Análise Sintática (Parser.java)
+Técnica: Parser Recursivo-Descendente.
 
-1. Analisador Léxico (Lexer.java):
+Precedência: Implementa a hierarquia completa de precedência de operadores (lógicos > comparação > adição > multiplicação).
 
-- Técnica: Autômato manual (AFD).
+Recuperação de Erros: Utiliza a estratégia de Recuperação por Pânico (Panic-Mode). Em caso de erro sintático, o compilador reporta o erro e tenta se sincronizar, pulando tokens até encontrar um ponto seguro (como ; ou o início de um novo comando), permitindo que ele encontre múltiplos erros em uma única execução.
 
-- Tratamento de Erros: Detecção de erros léxicos (caractere inválido) e relatório com indicação precisa de linha e coluna.
+3. Análise Semântica / Interpretação
+Checagem de Tipos: A classe SymbolTable armazena o tipo e o valor de cada variável. O sistema verifica a compatibilidade de tipos durante a declaração e a atribuição, garantindo que operações sejam realizadas apenas em tipos válidos (ex: não permite somar int e bool).
 
-- Funcionalidades: Suporte a números inteiros, ponto flutuante, strings (com aspas), operadores de um e dois caracteres, e comentários (// e /* */).
-
-
-2. Análise Sintática (Parser.java):
-
-- Técnica: Parser Recursivo-Descendente.
-
-- Precedência: Implementa a hierarquia completa de precedência de operadores (lógicos > comparação > adição > multiplicação).
-
-- Recuperação de Erros: Utiliza a estratégia de Recuperação por Pânico (Panic-Mode). Em caso de erro sintático, o compilador reporta o erro e tenta se sincronizar, pulando tokens até encontrar um ponto seguro (como ; ou o início de um novo comando), permitindo que ele encontre múltiplos erros em uma única execução.
-
-3. Análise Semântica / Interpretação:
-
-- Checagem de Tipos: A classe SymbolTable armazena o tipo e o valor de cada variável. O sistema verifica a compatibilidade de tipos durante a declaração e a atribuição, garantindo que operações sejam realizadas apenas em tipos válidos (ex: não permite somar int e bool).
-
--------------------------------------------------------------------------------------------------------------------------------------
-
-COMO EXECUTAR E TESTAR:
-
+▶️ Como Executar e Testar
 Pré-requisitos
 Java Development Kit (JDK) 8 ou superior.
 
@@ -101,23 +76,20 @@ compiler-CN/
 └── src/
     └── input/
         └── teste_completo.txt  <-- Arquivo de código-fonte
-
-
-PASSO A PASSO:
+Passo a Passo
 Crie o Arquivo de Teste: O arquivo teste_completo.txt deve seguir a gramática da linguagem.
 
-COMPILE E EXECUTE:
-Execute a classe Main.java a partir do diretório raiz do projeto (compiler-CN).
+Compile e Execute: Execute a classe Main.java a partir do diretório raiz do projeto (compiler-CN).
 
-ANÁLISE DE SAÍDA:
-- O console mostrará a lista de Tokens gerados pelo Lexer.
+Análise da Saída:
 
-- Em seguida, será impressa a Representação da Árvore de Sintaxe Abstrata (AST), mostrando a estrutura hierárquica do programa (graças ao PrintVisitor).
+O console mostrará a lista de Tokens gerados pelo Lexer.
 
-- Finalmente, a Fase de Execução (InterpreterVisitor) rodará o código e exibirá o Output:.
--------------------------------------------------------------------------------------------------------------------------------------
+Em seguida, será impressa a Representação da Árvore de Sintaxe Abstrata (AST), mostrando a estrutura hierárquica do programa (graças ao PrintVisitor).
 
-EXEMPLO DE CÓDIGO (FUNCIONAL)
+Finalmente, a Fase de Execução (InterpreterVisitor) rodará o código e exibirá o Output:.
+
+📝 Exemplo de Código (Funcional)
 // src/input/teste_completo.txt
 
 // DECLARAÇÕES
