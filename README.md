@@ -1,124 +1,212 @@
-☕ Compilador Simplificado em JAVA (Projeto ijgm-project)
-Este projeto implementa um compilador básico para uma linguagem imperativa simplificada, desenvolvido em Java. O foco do projeto foi a aplicação correta de conceitos de Programação Orientada a Objetos (POO) e a utilização de Padrões de Projeto na construção das fases de compilação.
+# ☕ Compilador Simplificado em JAVA (Projeto **ijgm-project**)
 
-🌟 Funcionalidades Principais
-O compilador processa um código-fonte e executa as três fases principais: Análise Léxica, Análise Sintática e Análise Semântica (Interpretação).
+Este projeto implementa um compilador/intérprete para uma linguagem imperativa simplificada, desenvolvido em Java. O foco é a correta aplicação de **Programação Orientada a Objetos (POO)** e **Padrões de Projeto** (Composite, Visitor e Iterator).
 
-⚙️ Características da Linguagem Implementada
-Tipos Estáticos: Suporte para declaração e checagem de tipos (int, float, bool, string).
+## 🌟 Funcionalidades e Gramática
 
-Comandos de Controle:
+| Tipo de Funcionalidade | Exemplos de Sintaxe | Observações |
+| :--- | :--- | :--- |
+| **Tipagem Estática** | `int x;`, `string nome;`, `bool ativo;` | Validação de tipos na declaração e atribuição. |
+| **Comandos de Controle** | `if (x > 10) { ... } else { ... }` | Estruturas `if/else` e `while` totalmente funcionais. |
+| **Expressões Complexas** | `a = (b * 2) + 5;` | Respeita a hierarquia de precedência de operadores. |
+| **Operadores** | `==`, `!=`, `>`, `<=`, `&&`, `||`, `+`, `-`, `*`, `/` | Suporte completo para operadores de comparação e lógicos. |
+| **Literiais** | `"texto"`, `10`, `3.14`, `true` | Reconhecimento de todos os tipos de literais da linguagem. |
 
-Condicionais: if e else.
+---
 
-Repetição: while.
+## 🧱 Arquitetura e Padrões de Projeto
 
-Expressões Robustas: Suporte para precedência de operadores.
+O projeto é estruturado em pacotes que refletem as fases de compilação, aplicando os padrões de design de forma estrita.
 
-Aritméticos: +, -, *, /.
+### Aplicação dos Padrões
 
-Comparação: ==, !=, >, <, >=, <=.
+| Padrão | Local de Uso | Teoria Aplicada |
+| :--- | :--- | :--- |
+| **COMPOSITE** | `parser/ast` | Permite que comandos e expressões complexas (`WhileStatement`, `BinaryExpression`) e simples (`NumberExpression`) sejam tratadas de forma uniforme. |
+| **VISITOR** | `visitor/` | Separa as operações de **travessia/execução** (`InterpreterVisitor`, `PrintVisitor`) da **estrutura** (AST), tornando o código escalável. |
+| **ITERATOR** | `parser/Parser.java` | O `Parser` consome tokens de forma sequencial e controlada, desacoplando-se da fonte de dados (`List<Token>`). |
 
-Lógicos: && (AND) e || (OR).
-
-Literiais: Reconhecimento de números inteiros, números de ponto flutuante, strings e booleanos (true/false).
-
-🧱 Arquitetura e Estrutura do Projeto
-O projeto é organizado por pacotes que refletem as fases de compilação, garantindo a modularidade e a manutenibilidade.
+### Estrutura de Pastas (`ijgm-project/`)
 
 ijgm-project/
-├── lexer/             # Analisador Léxico
+├── lexer/               # FASE LÉXICA
 
-│   ├── Token.java         # Representa o lexema e o tipo (com linha/coluna)
-│   └── Lexer.java         # Realiza a tokenização e detecção de erros léxicos
+│   ├── Lexer.java       # Implementa AFD manual e detecção de erros léxicos.
 
-├── parser/            # Analisador Sintático
+├── parser/              # FASE SINTÁTICA
 
-│   ├── ast/               # Árvore de Sintaxe Abstrata (Padrão Composite)
-│   └── Parser.java        # Constrói a AST a partir dos tokens
+│   ├── ast/             # AST (Padrão COMPOSITE)
 
-├── visitor/           # Interpretação e Visualização (Padrão Visitor)
+│   └── Parser.java      # Implementa Parser Recursivo-Descendente e Recuperação de Erros.
 
-│   ├── InterpreterVisitor.java # Executa a lógica e a análise semântica
-│   └── PrintVisitor.java       # Imprime a estrutura da AST
+├── symbol_table/        # FASE SEMÂNTICA (Contexto)
 
-├── symbol_table/      # Análise Semântica
+│   └── SymbolTable.java # Gerencia Tipos e Valores de Variáveis.
 
-│   └── SymbolTable.java   # Armazena variáveis, tipos e valores
+└── visitor/             # EXECUÇÃO (Padrão VISITOR)
 
-└── Main.java          # Ponto de entrada do compilador
-📐 Aplicação dos Padrões de Projeto
-O projeto utiliza três padrões de projeto essenciais para compiladores:
 
-Padrão de Projeto	Local de Aplicação	Objetivo
-COMPOSITE	Pacote parser/ast	Cria a hierarquia de nós da AST (Statement, Expression, WhileStatement, BinaryExpression, etc.), permitindo que o cliente (Visitor) trate comandos complexos e simples de maneira uniforme.
-VISITOR	Pacote visitor	Separa a lógica de travessia/operação (Interpretar, Imprimir) da estrutura (AST). Temos InterpreterVisitor (execução) e PrintVisitor (visualização).
-ITERATOR	Classe Parser.java	O Parser consome a lista de tokens do Lexer através de um Iterator (de forma implícita, usando List.iterator()), garantindo o consumo sequencial e controlado dos tokens.
 
-🛠️ Detalhes da Implementação
-1. Analisador Léxico (Lexer.java)
-Técnica: Autômato manual (AFD).
+---
 
-Tratamento de Erros: Detecção de erros léxicos (caractere inválido) e relatório com indicação precisa de linha e coluna.
+## 🛠️ Detalhes da Implementação
 
-Funcionalidades: Suporte a números inteiros, ponto flutuante, strings (com aspas), operadores de um e dois caracteres, e comentários (// e /* */).
+### 1. Analisador Léxico (`Lexer.java`)
 
-2. Análise Sintática (Parser.java)
-Técnica: Parser Recursivo-Descendente.
+* **Técnica:** **Autômato Finito Determinístico (AFD)** manual.
+* **Tratamento de Erros:** Reporta **erros léxicos** com precisão de **linha e coluna**.
 
-Precedência: Implementa a hierarquia completa de precedência de operadores (lógicos > comparação > adição > multiplicação).
+### 2. Análise Sintática (`Parser.java`)
 
-Recuperação de Erros: Utiliza a estratégia de Recuperação por Pânico (Panic-Mode). Em caso de erro sintático, o compilador reporta o erro e tenta se sincronizar, pulando tokens até encontrar um ponto seguro (como ; ou o início de um novo comando), permitindo que ele encontre múltiplos erros em uma única execução.
+* **Técnica:** **Parser Recursivo-Descendente**. Cada método (`parseExpression`, `parseStatement`) representa uma regra gramatical.
+* **Tratamento de Erros:** Implementa **Recuperação por Pânico (Panic-Mode)**, permitindo que o compilador encontre múltiplos erros sintáticos antes de interromper a compilação.
 
-3. Análise Semântica / Interpretação
-Checagem de Tipos: A classe SymbolTable armazena o tipo e o valor de cada variável. O sistema verifica a compatibilidade de tipos durante a declaração e a atribuição, garantindo que operações sejam realizadas apenas em tipos válidos (ex: não permite somar int e bool).
+### 3. Análise Semântica (`SymbolTable.java` & `InterpreterVisitor.java`)
 
-▶️ Como Executar e Testar
+* **Validação:** A `SymbolTable` impõe a **tipagem estática**, verificando se a variável foi declarada e se o valor atribuído é compatível com o tipo definido (`int`, `float`, `string`, etc.).
+
+---
+## ▶️ Como Executar e Testar
+
 Pré-requisitos
 Java Development Kit (JDK) 8 ou superior.
 
-Estrutura Necessária
-Certifique-se de que o seu arquivo de teste está na localização correta:
+1.  **Caminho do Arquivo:** Verifique se o `Main.java` aponta para o arquivo de teste correto (ex: `src/input/teste_completo.txt`).
+2.  **Execução:** Execute a classe `Main.java`.
 
-compiler-CN/
-└── src/
-    └── input/
-        └── teste_completo.txt  <-- Arquivo de código-fonte
-Passo a Passo
-Crie o Arquivo de Teste: O arquivo teste_completo.txt deve seguir a gramática da linguagem.
+### Saída Esperada no Console
 
-Compile e Execute: Execute a classe Main.java a partir do diretório raiz do projeto (compiler-CN).
+O programa irá gerar uma saída de 3 fases:
 
-Análise da Saída:
+1.  **Tokens:** Lista sequencial dos tokens reconhecidos.
+2.  **AST:** Impressão hierárquica e indentada da estrutura do código (via `PrintVisitor`).
+3.  **Execução:** Resultado final das instruções de `print` (via `InterpreterVisitor`).
 
-O console mostrará a lista de Tokens gerados pelo Lexer.
+---
 
-Em seguida, será impressa a Representação da Árvore de Sintaxe Abstrata (AST), mostrando a estrutura hierárquica do programa (graças ao PrintVisitor).
-
-Finalmente, a Fase de Execução (InterpreterVisitor) rodará o código e exibirá o Output:.
+## 📝 Exemplo de Código (Funcional)
 
 📝 Exemplo de Código (Funcional)
+Claro! Aqui está o código Markdown completo para o seu arquivo README.md, exatamente como formatado para o GitHub, incluindo todas as tabelas e blocos de código.
+
+Você pode copiar e colar todo o conteúdo abaixo no seu arquivo README.md.
+
+Markdown
+
+# ☕ Compilador Simplificado em JAVA (Projeto **ijgm-project**)
+
+Este projeto implementa um compilador/intérprete para uma linguagem imperativa simplificada, desenvolvido em Java. O foco é a correta aplicação de **Programação Orientada a Objetos (POO)** e **Padrões de Projeto** (Composite, Visitor e Iterator).
+
+## 🌟 Funcionalidades e Gramática
+
+| Tipo de Funcionalidade | Exemplos de Sintaxe | Observações |
+| :--- | :--- | :--- |
+| **Tipagem Estática** | `int x;`, `string nome;`, `bool ativo;` | Validação de tipos na declaração e atribuição. |
+| **Comandos de Controle** | `if (x > 10) { ... } else { ... }` | Estruturas `if/else` e `while` totalmente funcionais. |
+| **Expressões Complexas** | `a = (b * 2) + 5;` | Respeita a hierarquia de precedência de operadores. |
+| **Operadores** | `==`, `!=`, `>`, `<=`, `&&`, `||`, `+`, `-`, `*`, `/` | Suporte completo para operadores de comparação e lógicos. |
+| **Literiais** | `"texto"`, `10`, `3.14`, `true` | Reconhecimento de todos os tipos de literais da linguagem. |
+
+---
+
+## 🧱 Arquitetura e Padrões de Projeto
+
+O projeto é estruturado em pacotes que refletem as fases de compilação, aplicando os padrões de design de forma estrita.
+
+### Aplicação dos Padrões
+
+| Padrão | Local de Uso | Teoria Aplicada |
+| :--- | :--- | :--- |
+| **COMPOSITE** | `parser/ast` | Permite que comandos e expressões complexas (`WhileStatement`, `BinaryExpression`) e simples (`NumberExpression`) sejam tratadas de forma uniforme. |
+| **VISITOR** | `visitor/` | Separa as operações de **travessia/execução** (`InterpreterVisitor`, `PrintVisitor`) da **estrutura** (AST), tornando o código escalável. |
+| **ITERATOR** | `parser/Parser.java` | O `Parser` consome tokens de forma sequencial e controlada, desacoplando-se da fonte de dados (`List<Token>`). |
+
+### Estrutura de Pastas (`ijgm-project/`)
+
+ijgm-project/
+├── lexer/               # FASE LÉXICA
+│   ├── Lexer.java       # Implementa AFD manual e detecção de erros léxicos.
+├── parser/              # FASE SINTÁTICA
+│   ├── ast/             # AST (Padrão COMPOSITE)
+│   └── Parser.java      # Implementa Parser Recursivo-Descendente e Recuperação de Erros.
+├── symbol_table/        # FASE SEMÂNTICA (Contexto)
+│   └── SymbolTable.java # Gerencia Tipos e Valores de Variáveis.
+└── visitor/             # EXECUÇÃO (Padrão VISITOR)
+
+
+---
+
+## 🛠️ Detalhes da Implementação
+
+### 1. Analisador Léxico (`Lexer.java`)
+
+* **Técnica:** **Autômato Finito Determinístico (AFD)** manual.
+* **Tratamento de Erros:** Reporta **erros léxicos** com precisão de **linha e coluna**.
+
+### 2. Análise Sintática (`Parser.java`)
+
+* **Técnica:** **Parser Recursivo-Descendente**. Cada método (`parseExpression`, `parseStatement`) representa uma regra gramatical.
+* **Tratamento de Erros:** Implementa **Recuperação por Pânico (Panic-Mode)**, permitindo que o compilador encontre múltiplos erros sintáticos antes de interromper a compilação.
+
+### 3. Análise Semântica (`SymbolTable.java` & `InterpreterVisitor.java`)
+
+* **Validação:** A `SymbolTable` impõe a **tipagem estática**, verificando se a variável foi declarada e se o valor atribuído é compatível com o tipo definido (`int`, `float`, `string`, etc.).
+
+---
+
+## ▶️ Como Executar e Testar
+
+1.  **Caminho do Arquivo:** Verifique se o `Main.java` aponta para o arquivo de teste correto (ex: `src/input/teste_completo.txt`).
+2.  **Execução:** Execute a classe `Main.java`.
+
+### Saída Esperada no Console
+
+O programa irá gerar uma saída de 3 fases:
+
+1.  **Tokens:** Lista sequencial dos tokens reconhecidos.
+2.  **AST:** Impressão hierárquica e indentada da estrutura do código (via `PrintVisitor`).
+3.  **Execução:** Resultado final das instruções de `print` (via `InterpreterVisitor`).
+
+---
+
+## 📝 Exemplo de Código (Funcional)
+
 // src/input/teste_completo.txt
 
 // DECLARAÇÕES
+
 int a;
+
 int b;
+
 string nome;
+
 bool ativo;
 
 // COMANDOS
+
 a = 10;
-b = (a * 2) - 5; 
+
+b = (a * 2) - 5;
+
 nome = "Compilador OK";
+
 ativo = true;
 
 if (a > 5 && ativo == true) {
-    print nome + " rodando!";
+
+print nome + " rodando!";
+
 } else {
-    print "Falha na condicao.";
+
+print "Falha na condicao.";
+
 }
 
 while (b > 10) {
-    b = b - 1;
-    print b; 
+
+b = b - 1;
+
+print b;
+
 }
