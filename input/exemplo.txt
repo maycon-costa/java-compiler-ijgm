@@ -46,3 +46,10 @@ if (isDone) {
 } else {
     print "Teste de booleano com FALSE.";
 }
+// 8. Teste de loop com float
+print "Iniciando teste com float:";
+while (valor > 8.0) {
+    valor = valor - 0.5;
+    print valor;
+}
+
