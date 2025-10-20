@@ -1,5 +1,5 @@
 
-# ☕ Compilador Simplificado em Java (Projeto **ijgm-project**)
+# ☕ Compilador **ijgm-project**
 
 Este projeto implementa um **compilador/intérprete** para uma linguagem **imperativa simplificada**, desenvolvido em **Java**.
 O foco está na aplicação correta dos princípios de **Programação Orientada a Objetos (POO)** e dos **Padrões de Projeto**: **Composite**, **Visitor** e **Iterator**.
