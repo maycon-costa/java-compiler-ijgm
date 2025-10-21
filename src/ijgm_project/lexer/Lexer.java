@@ -98,9 +98,9 @@ public class Lexer {
      * * @return O próximo caractere ou '\0' se estiver no fim do arquivo.
      */
 
-     // TODO: a função olha o caractere atual, a doc está incorreta
+
     private char peekNext() {
-        if (position >= sourceCode.length()) { // Nota: Verificamos 'position', não 'position + 1'
+        if (position >= sourceCode.length()) { 
             return '\0';
         }
         return sourceCode.charAt(position); // 'position' é o *próximo* caractere a ser lido
@@ -128,66 +128,39 @@ public class Lexer {
         char c = advance(); // Consome o primeiro caractere do lexema
 
         switch (c) {
-            // Símbolos de um caractere
-            case '(':
-                addToken(TokenType.OPEN_PAREN);
-                break;
-            case ')':
-                addToken(TokenType.CLOSE_PAREN);
-                break;
-            case '{':
-                addToken(TokenType.OPEN_BRACE);
-                break;
-            case '}':
-                addToken(TokenType.CLOSE_BRACE);
-                break;
-            case ';':
-                addToken(TokenType.SEMICOLON);
-                break;
-            case '+':
-                addToken(TokenType.PLUS);
-                break;
-            case '-':
-                addToken(TokenType.MINUS);
-                break;
-            case '*':
-                addToken(TokenType.MULTIPLY);
-                break;
-
-            // Símbolos de um ou dois caracteres (usando match)
-            case '=':
-                addToken(match('=') ? TokenType.EQUAL_EQUAL : TokenType.ASSIGN);
-                break;
-            case '!':
+            case '(' -> addToken(TokenType.OPEN_PAREN);
+            case ')' -> addToken(TokenType.CLOSE_PAREN);
+            case '{' -> addToken(TokenType.OPEN_BRACE);
+            case '}' -> addToken(TokenType.CLOSE_BRACE);
+            case ';' -> addToken(TokenType.SEMICOLON);
+            case '+' -> addToken(TokenType.PLUS);
+            case '-' -> addToken(TokenType.MINUS);
+            case '*' -> addToken(TokenType.MULTIPLY);
+            case '=' -> addToken(match('=') ? TokenType.EQUAL_EQUAL : TokenType.ASSIGN);
+            case '!' -> {
                 if (match('=')) {
                     addToken(TokenType.NOT_EQUAL);
                 } else {
                     lexicalError("Caractere inesperado '!'");
                 }
-                break;
-            case '>':
-                addToken(match('=') ? TokenType.GREATER_EQUAL : TokenType.GREATER_THAN);
-                break;
-            case '<':
-                addToken(match('=') ? TokenType.LESS_EQUAL : TokenType.LESS_THAN);
-                break;
-            case '&':
+            }
+            case '>' -> addToken(match('=') ? TokenType.GREATER_EQUAL : TokenType.GREATER_THAN);
+            case '<' -> addToken(match('=') ? TokenType.LESS_EQUAL : TokenType.LESS_THAN);
+            case '&' -> {
                 if (match('&')) {
                     addToken(TokenType.AND);
                 } else {
                     lexicalError("Caractere inesperado '&'");
                 }
-                break;
-            case '|':
+            }
+            case '|' -> {
                 if (match('|')) {
                     addToken(TokenType.OR);
                 } else {
                     lexicalError("Caractere inesperado '|'");
                 }
-                break;
-
-            // Comentários ou Divisão
-            case '/':
+            }
+            case '/' -> {
                 if (match('/')) { // Comentário de linha (ex: //)
                     // Consome até o fim da linha
                     while (peekNext() != '\n' && !isAtEnd()) {
@@ -198,24 +171,13 @@ public class Lexer {
                 } else {
                     addToken(TokenType.DIVIDE);
                 }
-                break;
-
-            // Literais de String
-            case '"':
-                scanString();
-                break;
-
-
-            // Como advance() já cuidou de line++, esses dois cases podem ser unidos em um só
-            // Espaços em branco (ignorados)
-            case ' ', '\r', '\t':
-                break; // Ignora
-            case '\n':
-                // 'advance()' já cuidou de 'line' e 'column'
-                break;
-
-            // Default: Números, Identificadores ou Erros
-            default:
+            }
+            case '"' -> scanString();
+            case ' ', '\r', '\t' -> {
+            }
+            case '\n' -> {
+            }
+            default -> {
                 if (Character.isDigit(c)) {
                     scanNumber();
                 } else if (Character.isLetter(c)) {
@@ -223,9 +185,18 @@ public class Lexer {
                 } else {
                     lexicalError("Caractere inválido: '" + c + "'");
                 }
-                break;
+            }
         }
-    }
+        // Símbolos de um caractere
+        // Símbolos de um ou dois caracteres (usando match)
+        // Comentários ou Divisão
+        // Literais de String
+        // Como advance() já cuidou de line++, esses dois cases podem ser unidos em um só
+        // Espaços em branco (ignorados)
+        // Ignora
+        // 'advance()' já cuidou de 'line' e 'column'
+        // Default: Números, Identificadores ou Erros
+            }
 
     /**
      * Consome um comentário de bloco (ex: /* ... * /).

@@ -2,22 +2,26 @@ package ijgm_project.parser.ast;
 
 import ijgm_project.visitor.Visitor;
 
-public class FloatExpression implements Expression {
+// MUDANÇA: Implementa LiteralExpression em vez de Expression
+public class FloatExpression implements LiteralExpression {
     private final Float value;
 
     public FloatExpression(String value) {
-        this.value = Float.parseFloat(value);
+        this.value = Float.valueOf(value);
     }
 
-    public Float getValue() {
+    @Override // MUDANÇA: Adicionado Override e tipo de retorno Object
+    public Object getValue() {
         return value;
     }
 
     /**
      * Implementação do método accept do Padrão Visitor (Refatorado).
+     * Agora chama o visit(LiteralExpression)
      */
     @Override
     public <R> R accept(Visitor<R> visitor) {
+        // Esta chamada agora roteia para visit(LiteralExpression)
         return visitor.visit(this);
     }
 }

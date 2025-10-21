@@ -9,10 +9,7 @@ import java.util.Map;
  * Gerencia o contexto do programa, armazenando o tipo (para checagem semântica)
  * e o valor de runtime de cada variável.
  */
-// TODO: Trocar nome disso e funcionamento porque quebra o SOLID, isso não deve
-// fazer checagens semanticas
-// (NOTA: Mantendo o TODO original, mas renomeando a classe conforme a crítica)
-// (NOTA: O contexto de execução permaneceu realizando checagens semânticas, ainda está quebrando o SOLID, o Interpreter que deve tratar isso)
+// InterpreterVisitor, que é o responsável por ela.
 public class ExecutionContext {
     private final Map<String, Object> variables = new HashMap<>();
     private final Map<String, TokenType> types = new HashMap<>();
@@ -28,52 +25,41 @@ public class ExecutionContext {
             throw new RuntimeException("Erro Semântico: Variável '" + name + "' já declarada.");
         }
         types.put(name, type);
-        // Inicialização de valores padrão
-        if (type == TokenType.INT)
-            variables.put(name, 0);
-        else if (type == TokenType.FLOAT)
-            variables.put(name, 0.0f);
-        else if (type == TokenType.BOOL)
-            variables.put(name, false);
-        else if (type == TokenType.STRING_TYPE)
-            variables.put(name, "");
+        if (null != type)
+            // Inicialização de valores padrão
+        switch (type) {
+            case INT -> variables.put(name, 0);
+            case FLOAT -> variables.put(name, 0.0f);
+            case BOOL -> variables.put(name, false);
+            case STRING_TYPE -> variables.put(name, "");
+            default -> {
+            }
+        }
     }
 
     /**
-     * Atribui um valor a uma variável existente (checa tipo e declaração).
-     * * @param name  Nome da variável.
-     * @param value O valor a ser atribuído.
+     * Obtém o tipo estático (declarado) de uma variável.
+     * Usado pelo Interpreter para checagem semântica.
+     * * @param name Nome da variável.
+     * @return O TokenType da variável.
      */
-
-    public void put(String name, Object value) {
+    public TokenType getDeclaredType(String name) {
         if (!types.containsKey(name)) {
             throw new RuntimeException("Erro Semântico: Variável '" + name + "' não declarada.");
         }
-        TokenType expectedType = types.get(name);
+        return types.get(name);
+    }
 
-        // Permite atribuição de INT para FLOAT (coerção implícita)
-        if (expectedType == TokenType.FLOAT && value instanceof Integer) {
-            value = ((Integer) value).floatValue();
-        }
-
-        // Checagem de compatibilidade de tipos (Core da Análise Semântica)
-        if (expectedType == TokenType.INT && !(value instanceof Integer)) {
-            throw new RuntimeException(
-                    "Erro Semântico: Esperado INT, mas recebido " + value.getClass().getSimpleName());
-        }
-        if (expectedType == TokenType.FLOAT && !(value instanceof Float)) {
-            throw new RuntimeException(
-                    "Erro Semântico: Esperado FLOAT, mas recebido " + value.getClass().getSimpleName());
-        }
-        if (expectedType == TokenType.BOOL && !(value instanceof Boolean)) {
-            throw new RuntimeException(
-                    "Erro Semântico: Esperado BOOL, mas recebido " + value.getClass().getSimpleName());
-        }
-        if (expectedType == TokenType.STRING_TYPE && !(value instanceof String)) {
-            throw new RuntimeException(
-                    "Erro Semântico: Esperado STRING, mas recebido " + value.getClass().getSimpleName());
-        }
-
+    /**
+     * Atribui um valor de runtime a uma variável.
+     * Este método agora é "burro" e apenas armazena o valor,
+     * A checagem de tipo foi movida para o InterpreterVisitor.
+     * * @param name  Nome da variável.
+     * @param value O valor a ser atribuído.
+     */
+    public void put(String name, Object value) {
+        // A checagem de "não declarada" é feita antes pelo 'getDeclaredType'.
+        // Este método agora só armazena.
         variables.put(name, value);
     }
 
@@ -82,9 +68,9 @@ public class ExecutionContext {
      * * @param name Nome da variável.
      * @return O valor armazenado.
      */
-
     public Object get(String name) {
         if (!variables.containsKey(name)) {
+            // Esta checagem ainda é válida para o 'get' (ex: print a;)
             throw new RuntimeException("Erro Semântico: Variável '" + name + "' não encontrada.");
         }
         return variables.get(name);

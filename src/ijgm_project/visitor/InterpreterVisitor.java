@@ -1,76 +1,90 @@
 package ijgm_project.visitor;
 
+import ijgm_project.lexer.TokenType;
 import ijgm_project.parser.ast.*;
 import ijgm_project.symbol_table.ExecutionContext;
 
 /**
  * Implementa a operação de execução na AST.
- * (Refatorado para implementar Visitor<Object> e retornar valores,
- * eliminando o campo 'result').
+ * (Refatorado para implementar Visitor<Object> e retornar valores).
+ * (Refatorado para assumir a lógica semântica de atribuição, resolvendo o SOLID).
+ * (Ajustado para evitar NullPointerException em checagens de tipo).
  */
 public class InterpreterVisitor implements Visitor<Object> {
     private final ExecutionContext context = new ExecutionContext();
-    // private Object result = null; // <-- REMOVIDO! (Crítica do colega)
 
-    /**
-     * Avalia uma expressão e retorna seu valor.
-     * (Função helper para clareza).
-     */
     private Object evaluate(Expression expression) {
         return expression.accept(this);
     }
 
-    /**
-     * Executa um comando.
-     * (Função helper para clareza).
-     */
     private void execute(Statement statement) {
         statement.accept(this);
     }
+    
+    private String getTypeName(Object obj) {
+        if (obj == null) {
+            return "null";
+        }
+        return obj.getClass().getSimpleName();
+    }
 
+    // ... (visit(AssignStatement), visit(PrintStatement), visit(WhileStatement), visit(IfStatement) NÃO MUDAM) ...
     @Override
     public Object visit(AssignStatement statement) {
-        // 1. Avalia a expressão do lado direito
         Object value = evaluate(statement.getExpression());
-        // 2. Lógica Semântica: Armazena o valor.
-        context.put(statement.getVariableName(), value);
-        return null; // Comandos não retornam valor
-    }
+        String varName = statement.getVariableName();
+        TokenType expectedType = context.getDeclaredType(varName);
 
+        if (expectedType == TokenType.FLOAT && value instanceof Integer) {
+            value = ((Integer) value).floatValue();
+        }
+
+        if (expectedType == TokenType.INT && !(value instanceof Integer)) {
+            throw new RuntimeException(
+                    "Erro Semântico: Esperado INT para '" + varName + "', mas recebido " + getTypeName(value));
+        }
+        if (expectedType == TokenType.FLOAT && !(value instanceof Float)) {
+            throw new RuntimeException(
+                    "Erro Semântico: Esperado FLOAT para '" + varName + "', mas recebido " + getTypeName(value));
+        }
+        if (expectedType == TokenType.BOOL && !(value instanceof Boolean)) {
+            throw new RuntimeException(
+                    "Erro Semântico: Esperado BOOL para '" + varName + "', mas recebido " + getTypeName(value));
+        }
+        if (expectedType == TokenType.STRING_TYPE && !(value instanceof String)) {
+            throw new RuntimeException(
+                    "Erro Semântico: Esperado STRING para '" + varName + "', mas recebido " + getTypeName(value));
+        }
+        
+        context.put(varName, value);
+        return null;
+    }
     @Override
     public Object visit(PrintStatement statement) {
-        // Avalia a expressão e imprime o resultado.
         Object value = evaluate(statement.getExpression());
         System.out.println("Output: " + value);
-        return null; // Comandos não retornam valor
+        return null;
     }
-
     @Override
     public Object visit(WhileStatement statement) {
-        // Avalia a condição antes de cada iteração.
         Object condition = evaluate(statement.getCondition());
         if (!(condition instanceof Boolean)) {
             throw new RuntimeException("Condição do 'while' deve ser um booleano.");
         }
         while ((Boolean) condition) {
-            // Executa o corpo do loop
             for (Statement stmt : statement.getBody()) {
                 execute(stmt);
             }
-            // Reavalia a condição
             condition = evaluate(statement.getCondition());
         }
-        return null; // Comandos não retornam valor
+        return null;
     }
-
     @Override
     public Object visit(IfStatement statement) {
-        // Avalia a condição
         Object condition = evaluate(statement.getCondition());
         if (!(condition instanceof Boolean)) {
             throw new RuntimeException("Condição do 'if' deve ser um booleano.");
         }
-        // Executa o bloco 'then' ou 'else'
         if ((Boolean) condition) {
             for (Statement stmt : statement.getThenBody()) {
                 execute(stmt);
@@ -82,20 +96,15 @@ public class InterpreterVisitor implements Visitor<Object> {
                 }
             }
         }
-        return null; // Comandos não retornam valor
+        return null;
     }
 
-    // ------------------------------------------------------------------------
-    // Métodos visit para expressões (Avaliação de valores)
-    // ------------------------------------------------------------------------
-
+    // ... (visit(BinaryExpression) NÃO MUDA) ...
     @Override
     public Object visit(BinaryExpression expression) {
-        // Avaliação recursiva dos lados esquerdo e direito.
         Object leftVal = evaluate(expression.getLeft());
         Object rightVal = evaluate(expression.getRight());
 
-        // Lógica de Coerção (Promoção de Tipo)
         boolean isNumericOperation = switch (expression.getOperator()) {
             case GREATER_THAN, LESS_THAN, GREATER_EQUAL, LESS_EQUAL,
                     MINUS, MULTIPLY, DIVIDE ->
@@ -115,7 +124,7 @@ public class InterpreterVisitor implements Visitor<Object> {
         }
 
         switch (expression.getOperator()) {
-            // Comparações
+            // ... (Todos os cases de BinaryExpression não mudam) ...
             case GREATER_THAN -> {
                 if (leftVal instanceof Integer && rightVal instanceof Integer) {
                     return (Integer) leftVal > (Integer) rightVal;
@@ -148,16 +157,18 @@ public class InterpreterVisitor implements Visitor<Object> {
                 }
                 throw new RuntimeException("Operadores de comparação suportam apenas números");
             }
-
-            // Igualdade
             case EQUAL_EQUAL -> {
+                if (leftVal == null) {
+                    return rightVal == null;
+                }
                 return leftVal.equals(rightVal);
             }
             case NOT_EQUAL -> {
+                if (leftVal == null) {
+                    return rightVal != null;
+                }
                 return !leftVal.equals(rightVal);
             }
-
-            // Lógicos
             case AND -> {
                 if (leftVal instanceof Boolean && rightVal instanceof Boolean) {
                     return (Boolean) leftVal && (Boolean) rightVal;
@@ -170,8 +181,6 @@ public class InterpreterVisitor implements Visitor<Object> {
                 }
                 throw new RuntimeException("Operadores lógicos suportam apenas booleanos.");
             }
-
-            // Aritméticos
             case MINUS -> {
                 if (leftVal instanceof Integer && rightVal instanceof Integer) {
                     return (Integer) leftVal - (Integer) rightVal;
@@ -212,22 +221,13 @@ public class InterpreterVisitor implements Visitor<Object> {
                 }
                 throw new RuntimeException("Tipos incompatíveis para o operador PLUS");
             }
-
             default -> throw new RuntimeException(
                     "Operador binário não suportado ou token inesperado: " + expression.getOperator());
         }
     }
 
-    // TODO: Considerar uma classe abstrata LiteralExpression para evitar repetição em FloatExpression, NumberExpression, StringExpression e BooleanExpression
-    @Override
-    public Object visit(NumberExpression expression) {
-        return expression.getValue(); // Retorna o valor
-    }
-
-    @Override
-    public Object visit(FloatExpression expression) {
-        return expression.getValue(); // Retorna o valor
-    }
+    // --- MUDANÇA  ---
+    // (visit(Number...), visit(Float...), visit(String...), visit(Boolean...) REMOVIDOS)
 
     @Override
     public Object visit(VariableExpression expression) {
@@ -235,19 +235,17 @@ public class InterpreterVisitor implements Visitor<Object> {
     }
 
     @Override
-    public Object visit(StringExpression expression) {
-        return expression.getValue(); // Retorna o valor
-    }
-
-    @Override
     public Object visit(DeclarationStatement statement) {
         context.declare(statement.getVariableName(), statement.getType());
-        // A palavra 'Read' foi REMOVIDA daqui.
         return null; // Comandos não retornam valor
     }
 
+    /**
+     * Visita qualquer nó literal (Number, Float, String, Boolean)
+     * e retorna seu valor (autoboxed).
+     */
     @Override
-    public Object visit(BooleanExpression expression) {
-        return expression.getValue(); // Retorna o valor
+    public Object visit(LiteralExpression expression) {
+        return expression.getValue();
     }
 }

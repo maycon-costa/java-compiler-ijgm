@@ -279,24 +279,32 @@ public class Parser {
      * Comparação (>, <, >=, <=)
      */
 
-     // TODO: como expressões como a > b > c serão tratadas?
-    private Expression parseComparison() {
-        Expression left = parseAddition();
-        while (currentToken.getType() == TokenType.GREATER_THAN || currentToken.getType() == TokenType.GREATER_EQUAL ||
-                currentToken.getType() == TokenType.LESS_THAN || currentToken.getType() == TokenType.LESS_EQUAL) {
-            TokenType operator = currentToken.getType();
-            consume(operator); // <--- CORRIGIDO (era advance())
-            Expression right = parseAddition();
-            left = new BinaryExpression(left, operator, right);
-        }
-        return left;
+     private Expression parseComparison() {
+    Expression left = parseAddition();
+
+    // Troca o 'while' (que permite repetição) por um 'if' (que permite no máximo uma vez)
+    if (currentToken.getType() == TokenType.GREATER_THAN || 
+        currentToken.getType() == TokenType.GREATER_EQUAL ||
+        currentToken.getType() == TokenType.LESS_THAN || 
+        currentToken.getType() == TokenType.LESS_EQUAL) {
+        
+        TokenType operator = currentToken.getType();
+        consume(operator);
+        Expression right = parseAddition();
+        left = new BinaryExpression(left, operator, right);
+        
+        // Se houver mais tokens de comparação, eles serão processados pela próxima chamada 
+        // de parseExpression() (ou causarão um erro dependendo da regra superior).
+        // No caso de 'a > b > c', o segundo '>' causaria um erro sintático aqui.
+    }
+    return left;
     }
 
-    /**
-     * Adição e Subtração (+, -)
-     */
-    private Expression parseAddition() {
-        Expression left = parseMultiplication();
+/**
+ * Adição e Subtração (+, -)
+ */
+private Expression parseAddition() {
+    Expression left = parseMultiplication();
         while (currentToken.getType() == TokenType.PLUS || currentToken.getType() == TokenType.MINUS) {
             TokenType operator = currentToken.getType();
             consume(operator); // <--- CORRIGIDO (era advance())
