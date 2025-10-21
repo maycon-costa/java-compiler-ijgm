@@ -11,6 +11,7 @@ import java.util.List;
  * Analisador Sintático (Parser).
  * Implementa o algoritmo Recursivo-Descendente para construir a AST.
  * Possui lógica de Recuperação de Erros (Panic-Mode).
+ * (Refatorado para usar consume() corretamente nas regras de expressão).
  */
 public class Parser {
     private final Iterator<Token> tokens;
@@ -37,8 +38,7 @@ public class Parser {
     /**
      * Consome o token atual, verificando se ele corresponde ao tipo esperado.
      * Implementa a lógica de Recuperação de Erros por Pânico.
-     * 
-     * @param expectedType O TokenType esperado.
+     * * @param expectedType O TokenType esperado.
      */
     private void consume(TokenType expectedType) {
         if (currentToken.getType() == expectedType) {
@@ -53,8 +53,7 @@ public class Parser {
 
     /**
      * Imprime a mensagem de erro sintático e marca que um erro ocorreu.
-     * 
-     * @param message A mensagem de erro.
+     * * @param message A mensagem de erro.
      */
     private void reportError(String message) {
         System.err.println("Erro Sintático: " + message + " na linha " + currentToken.getLine() + ", coluna "
@@ -92,8 +91,7 @@ public class Parser {
 
     /**
      * Regra principal: Programa -> Declarações Comandos
-     * 
-     * @return Uma lista de Statement's que compõem o programa.
+     * * @return Uma lista de Statement's que compõem o programa.
      */
     public List<Statement> parse() {
         List<Statement> statements = new ArrayList<>();
@@ -121,11 +119,13 @@ public class Parser {
      * Regra: Declaração -> tipo id ;
      */
     private DeclarationStatement parseDeclaration() {
+        // O loop 'parse()' já garantiu que currentToken é um tipo (INT, FLOAT, etc.)
         TokenType type = currentToken.getType();
-        consume(type);
+        advance(); // Consome o token de tipo (ex: 'int')
+
         String varName = currentToken.getValue();
-        consume(TokenType.IDENTIFIER);
-        consume(TokenType.SEMICOLON);
+        consume(TokenType.IDENTIFIER); // Consome e valida o nome da variável
+        consume(TokenType.SEMICOLON); // Consome e valida o ';'
         return new DeclarationStatement(type, varName);
     }
 
@@ -138,9 +138,37 @@ public class Parser {
             case PRINT -> parsePrintStatement();
             case WHILE -> parseWhileStatement();
             case IF -> parseIfStatement();
-            default -> throw new RuntimeException("Token inesperado: " + currentToken.getType() +
-                    " na linha " + currentToken.getLine() + ", coluna " + currentToken.getColumn());
+            // case OPEN_BRACE -> parseBlockStatement(); // <-- ESTA ERA A LINHA DO ERRO (REMOVIDA)
+            default -> {
+                // Erro: Token inesperado.
+                reportError("Token inesperado no início de um comando: " + currentToken.getType());
+                // Tenta pular para o próximo comando
+                synchronize();
+                // Lança exceção para parar a avaliação desta regra
+                throw new RuntimeException("Token inesperado: " + currentToken.getType() +
+                        " na linha " + currentToken.getLine() + ", coluna " + currentToken.getColumn());
+            }
         };
+    }
+
+    /**
+     * Regra: Bloco -> { (Declaração | Comando)* }
+     * (Helper para 'if' e 'while')
+     */
+    private List<Statement> parseBlock() {
+        consume(TokenType.OPEN_BRACE);
+        List<Statement> statements = new ArrayList<>();
+        while (currentToken.getType() != TokenType.CLOSE_BRACE && currentToken.getType() != TokenType.EOF) {
+            // O parser original só permitia comandos dentro de blocos (não declarações)
+            statements.add(parseStatement());
+        }
+        
+        if(currentToken.getType() == TokenType.EOF) {
+            reportError("Bloco não fechado. Esperado '}' mas encontrou Fim de Arquivo.");
+        } else {
+            consume(TokenType.CLOSE_BRACE); // Consome o '}'
+        }
+        return statements;
     }
 
     /**
@@ -173,12 +201,7 @@ public class Parser {
         consume(TokenType.OPEN_PAREN);
         Expression condition = parseExpression();
         consume(TokenType.CLOSE_PAREN);
-        consume(TokenType.OPEN_BRACE);
-        List<Statement> body = new ArrayList<>();
-        while (currentToken.getType() != TokenType.CLOSE_BRACE) {
-            body.add(parseStatement());
-        }
-        consume(TokenType.CLOSE_BRACE);
+        List<Statement> body = parseBlock(); // Usa a função helper parseBlock
         return new WhileStatement(condition, body);
     }
 
@@ -190,30 +213,20 @@ public class Parser {
         consume(TokenType.OPEN_PAREN);
         Expression condition = parseExpression();
         consume(TokenType.CLOSE_PAREN);
-        consume(TokenType.OPEN_BRACE);
-        List<Statement> thenBody = new ArrayList<>();
-        while (currentToken.getType() != TokenType.CLOSE_BRACE) {
-            thenBody.add(parseStatement());
-        }
-        consume(TokenType.CLOSE_BRACE);
+        List<Statement> thenBody = parseBlock(); // Usa a função helper parseBlock
         List<Statement> elseBody = null;
         if (currentToken.getType() == TokenType.ELSE) {
             consume(TokenType.ELSE);
-            consume(TokenType.OPEN_BRACE);
-            elseBody = new ArrayList<>();
-            while (currentToken.getType() != TokenType.CLOSE_BRACE) {
-                elseBody.add(parseStatement());
-            }
-            consume(TokenType.CLOSE_BRACE);
+            // O parser original permitia 'else if' ou 'else { ... }'
+            // Este parser refatorado só permite 'else { ... }'
+            elseBody = parseBlock(); // Usa a função helper parseBlock
         }
         return new IfStatement(condition, thenBody, elseBody);
     }
 
     // ---------------------------------------------------------
     // Análise de Expressões (Implementação da Precedência)
-    // A precedência é resolvida pela hierarquia de chamadas dos métodos:
-    // OR (menor) -> AND -> Igualdade -> Comparação -> Adição -> Multiplicação ->
-    // Primário (maior)
+    // CORREÇÃO APLICADA: Trocado 'advance()' por 'consume(operator)'
     // ---------------------------------------------------------
 
     private Expression parseExpression() {
@@ -227,7 +240,7 @@ public class Parser {
         Expression left = parseLogicalAND();
         while (currentToken.getType() == TokenType.OR) {
             TokenType operator = currentToken.getType();
-            advance();
+            consume(operator); // <--- CORRIGIDO (era advance())
             Expression right = parseLogicalAND();
             left = new BinaryExpression(left, operator, right);
         }
@@ -241,7 +254,7 @@ public class Parser {
         Expression left = parseEquality();
         while (currentToken.getType() == TokenType.AND) {
             TokenType operator = currentToken.getType();
-            advance();
+            consume(operator); // <--- CORRIGIDO (era advance())
             Expression right = parseEquality();
             left = new BinaryExpression(left, operator, right);
         }
@@ -255,7 +268,7 @@ public class Parser {
         Expression left = parseComparison();
         while (currentToken.getType() == TokenType.EQUAL_EQUAL || currentToken.getType() == TokenType.NOT_EQUAL) {
             TokenType operator = currentToken.getType();
-            advance();
+            consume(operator); // <--- CORRIGIDO (era advance())
             Expression right = parseComparison();
             left = new BinaryExpression(left, operator, right);
         }
@@ -265,12 +278,14 @@ public class Parser {
     /**
      * Comparação (>, <, >=, <=)
      */
+
+     // TODO: como expressões como a > b > c serão tratadas?
     private Expression parseComparison() {
         Expression left = parseAddition();
         while (currentToken.getType() == TokenType.GREATER_THAN || currentToken.getType() == TokenType.GREATER_EQUAL ||
                 currentToken.getType() == TokenType.LESS_THAN || currentToken.getType() == TokenType.LESS_EQUAL) {
             TokenType operator = currentToken.getType();
-            advance();
+            consume(operator); // <--- CORRIGIDO (era advance())
             Expression right = parseAddition();
             left = new BinaryExpression(left, operator, right);
         }
@@ -284,7 +299,7 @@ public class Parser {
         Expression left = parseMultiplication();
         while (currentToken.getType() == TokenType.PLUS || currentToken.getType() == TokenType.MINUS) {
             TokenType operator = currentToken.getType();
-            advance();
+            consume(operator); // <--- CORRIGIDO (era advance())
             Expression right = parseMultiplication();
             left = new BinaryExpression(left, operator, right);
         }
@@ -298,7 +313,7 @@ public class Parser {
         Expression left = parsePrimary();
         while (currentToken.getType() == TokenType.MULTIPLY || currentToken.getType() == TokenType.DIVIDE) {
             TokenType operator = currentToken.getType();
-            advance();
+            consume(operator); // <--- CORRIGIDO (era advance())
             Expression right = parsePrimary();
             left = new BinaryExpression(left, operator, right);
         }
@@ -345,8 +360,15 @@ public class Parser {
                 consume(TokenType.CLOSE_PAREN);
                 yield expr;
             }
-            default -> throw new RuntimeException("Token inesperado na expressão: " + currentToken.getType() +
-                    " na linha " + currentToken.getLine() + ", coluna " + currentToken.getColumn());
+            default -> {
+                // Erro: Token inesperado.
+                reportError("Token inesperado na expressão: " + currentToken.getType());
+                // Tenta sincronizar para continuar a análise
+                synchronize();
+                // Lança exceção para parar a avaliação desta regra
+                throw new RuntimeException("Expressão primária inválida: " + currentToken.getType() +
+                        " na linha " + currentToken.getLine() + ", coluna " + currentToken.getColumn());
+            }
         };
     }
 }

@@ -10,19 +10,16 @@ import java.util.List;
  * Analisador Léxico (Scanner).
  * Implementa um Autômato Finito Determinístico (AFD) manual para transformar
  * o código-fonte em uma sequência de tokens.
+ * * (Refatorado para quebrar responsabilidades, centralizar erros e usar
+ * helpers).
  */
-
 public class Lexer {
     private final String sourceCode;
+    private final List<Token> tokens = new ArrayList<>();
     private int position = 0;
     private int line = 1;
     private int column = 1;
-
-    /**
-     * Construtor que lê o código-fonte do arquivo.
-     * 
-     * @param filePath Caminho para o arquivo de código-fonte.
-     */
+    private int start = 0; // Marca o início do lexema atual
 
     public Lexer(String filePath) throws IOException {
         this.sourceCode = new String(Files.readAllBytes(Paths.get(filePath)));
@@ -31,263 +28,306 @@ public class Lexer {
     /**
      * Método principal para a análise léxica.
      * Percorre o código-fonte caractere por caractere e identifica os tokens.
-     * 
-     * @return Uma lista sequencial de objetos Token.
+     * * @return Uma lista sequencial de objetos Token.
      */
-
     public List<Token> tokenize() {
-        List<Token> tokens = new ArrayList<>();
-        while (position < sourceCode.length()) {
-            char currentChar = sourceCode.charAt(position);
-
-            // 1. Tratamento de espaços e quebras de linha
-            if (Character.isWhitespace(currentChar)) {
-                if (currentChar == '\n') {
-                    line++;
-                    column = 1;
-                } else {
-                    column++;
-                }
-                position++;
-                continue;
-            }
-
-            // 2. Tratamento de comentários (// e /* */)
-            if (currentChar == '/' && peek() == '/') {
-                while (position < sourceCode.length() && sourceCode.charAt(position) != '\n') {
-                    position++;
-                }
-                continue;
-            }
-            if (currentChar == '/' && peek() == '*') {
-                position += 2;
-                while (position < sourceCode.length() && !(sourceCode.charAt(position) == '*' && peek() == '/')) {
-                    if (sourceCode.charAt(position) == '\n') {
-                        line++;
-                        column = 1;
-                    } else {
-                        column++;
-                    }
-                    position++;
-                }
-                if (position < sourceCode.length()) {
-                    position += 2;
-                }
-                continue;
-            }
-
-            // 3. Reconhecimento de strings
-            if (currentChar == '"') {
-                position++;
-                int start = position;
-                while (position < sourceCode.length() && sourceCode.charAt(position) != '"') {
-                    if (sourceCode.charAt(position) == '\n') {
-                        throw new RuntimeException("Erro Léxico: String literal não fechada na linha " + line);
-                    }
-                    position++;
-                }
-                if (position == sourceCode.length()) {
-                    throw new RuntimeException("Erro Léxico: String literal não terminada");
-                }
-                String value = sourceCode.substring(start, position);
-                tokens.add(new Token(TokenType.STRING, value, line, column));
-                position++;
-                column += value.length() + 2;
-                continue;
-            }
-
-            // 4. Reconhecimento de números (inteiros e float)
-            if (Character.isDigit(currentChar)) {
-                StringBuilder numberBuilder = new StringBuilder();
-                int startColumn = column;
-
-                // Lê a parte inteira
-                while (position < sourceCode.length() && Character.isDigit(sourceCode.charAt(position))) {
-                    numberBuilder.append(sourceCode.charAt(position));
-                    position++;
-                    column++;
-                }
-
-                // Verifica e lê a parte decimal (Float)
-                if (position < sourceCode.length() && sourceCode.charAt(position) == '.'
-                        && position + 1 < sourceCode.length() && Character.isDigit(peek())) {
-                    numberBuilder.append(sourceCode.charAt(position));
-                    position++;
-                    column++;
-
-                    while (position < sourceCode.length() && Character.isDigit(sourceCode.charAt(position))) {
-                        numberBuilder.append(sourceCode.charAt(position));
-                        position++;
-                        column++;
-                    }
-                    tokens.add(new Token(TokenType.FLOAT_LITERAL, numberBuilder.toString(), line, startColumn));
-                } else {
-                    // Se não for float, é um inteiro
-                    tokens.add(new Token(TokenType.NUMBER, numberBuilder.toString(), line, startColumn));
-                }
-                continue;
-            }
-
-            // 5. Reconhecimento de identificadores e palavras-reservadas
-            if (Character.isLetter(currentChar)) {
-                StringBuilder idBuilder = new StringBuilder();
-                int startColumn = column;
-                while (position < sourceCode.length() && (Character.isLetterOrDigit(sourceCode.charAt(position)))) {
-                    idBuilder.append(sourceCode.charAt(position));
-                    position++;
-                    column++;
-                }
-                String id = idBuilder.toString();
-                // Mapeamento para Palavras-Reservadas e Tipos
-                TokenType type = switch (id) {
-                    case "while" -> TokenType.WHILE;
-                    case "print" -> TokenType.PRINT;
-                    case "if" -> TokenType.IF;
-                    case "else" -> TokenType.ELSE;
-                    case "int" -> TokenType.INT;
-                    case "float" -> TokenType.FLOAT;
-                    case "bool" -> TokenType.BOOL;
-                    case "string" -> TokenType.STRING_TYPE;
-                    case "true" -> TokenType.TRUE;
-                    case "false" -> TokenType.FALSE;
-                    default -> TokenType.IDENTIFIER;
-                };
-                tokens.add(new Token(type, id, line, startColumn));
-                continue;
-            }
-
-            // 6. Reconhecimento de operadores e símbolos
-            int startColumn = column;
-            switch (currentChar) {
-                // Operadores de dois caracteres e desambiguação
-                case '=' -> {
-                    if (peek() == '=') {
-                        tokens.add(new Token(TokenType.EQUAL_EQUAL, "==", line, startColumn));
-                        position += 2;
-                        column += 2;
-                    } else {
-                        tokens.add(new Token(TokenType.ASSIGN, "=", line, startColumn));
-                        position++;
-                        column++;
-                    }
-                }
-                case '!' -> {
-                    if (peek() == '=') {
-                        tokens.add(new Token(TokenType.NOT_EQUAL, "!=", line, startColumn));
-                        position += 2;
-                        column += 2;
-                    } else {
-                        throw new RuntimeException(
-                                "Erro Léxico: Caractere inesperado '!' na linha " + line + ", coluna " + startColumn);
-                    }
-                }
-                case '>' -> {
-                    if (peek() == '=') {
-                        tokens.add(new Token(TokenType.GREATER_EQUAL, ">=", line, startColumn));
-                        position += 2;
-                        column += 2;
-                    } else {
-                        tokens.add(new Token(TokenType.GREATER_THAN, ">", line, startColumn));
-                        position++;
-                        column++;
-                    }
-                }
-                case '<' -> {
-                    if (peek() == '=') {
-                        tokens.add(new Token(TokenType.LESS_EQUAL, "<=", line, startColumn));
-                        position += 2;
-                        column += 2;
-                    } else {
-                        tokens.add(new Token(TokenType.LESS_THAN, "<", line, startColumn));
-                        position++;
-                        column++;
-                    }
-                }
-                case '&' -> {
-                    if (peek() == '&') {
-                        tokens.add(new Token(TokenType.AND, "&&", line, startColumn));
-                        position += 2;
-                        column += 2;
-                    } else {
-                        throw new RuntimeException(
-                                "Erro Léxico: Caractere inesperado '&' na linha " + line + ", coluna " + startColumn);
-                    }
-                }
-                case '|' -> {
-                    if (peek() == '|') {
-                        tokens.add(new Token(TokenType.OR, "||", line, startColumn));
-                        position += 2;
-                        column += 2;
-                    } else {
-                        throw new RuntimeException(
-                                "Erro Léxico: Caractere inesperado '|' na linha " + line + ", coluna " + startColumn);
-                    }
-                }
-                // Símbolos de um único caractere
-                case '+' -> {
-                    tokens.add(new Token(TokenType.PLUS, "+", line, startColumn));
-                    position++;
-                    column++;
-                }
-                case '-' -> {
-                    tokens.add(new Token(TokenType.MINUS, "-", line, startColumn));
-                    position++;
-                    column++;
-                }
-                case '*' -> {
-                    tokens.add(new Token(TokenType.MULTIPLY, "*", line, startColumn));
-                    position++;
-                    column++;
-                }
-                case '/' -> {
-                    tokens.add(new Token(TokenType.DIVIDE, "/", line, startColumn));
-                    position++;
-                    column++;
-                }
-                case ';' -> {
-                    tokens.add(new Token(TokenType.SEMICOLON, ";", line, startColumn));
-                    position++;
-                    column++;
-                }
-                case '(' -> {
-                    tokens.add(new Token(TokenType.OPEN_PAREN, "(", line, startColumn));
-                    position++;
-                    column++;
-                }
-                case ')' -> {
-                    tokens.add(new Token(TokenType.CLOSE_PAREN, ")", line, startColumn));
-                    position++;
-                    column++;
-                }
-                case '{' -> {
-                    tokens.add(new Token(TokenType.OPEN_BRACE, "{", line, startColumn));
-                    position++;
-                    column++;
-                }
-                case '}' -> {
-                    tokens.add(new Token(TokenType.CLOSE_BRACE, "}", line, startColumn));
-                    position++;
-                    column++;
-                }
-
-                default -> throw new RuntimeException("Erro Léxico: Caractere inválido na linha " + line + ", coluna "
-                        + column + ": '" + currentChar + "'");
-            }
+        while (!isAtEnd()) {
+            start = position; // Marca o início do novo token
+            scanToken();
         }
         tokens.add(new Token(TokenType.EOF, "", line, column));
         return tokens;
     }
 
     /**
+     * Verifica se o analisador chegou ao fim do código-fonte.
+     * * @return true se a posição atual for maior ou igual ao tamanho do código.
+     */
+    private boolean isAtEnd() {
+        return position >= sourceCode.length();
+    }
+
+    /**
+     * Lança uma exceção padronizada para erros léxicos.
+     * * @param message A mensagem de erro específica.
+     */
+    private void lexicalError(String message) {
+        throw new RuntimeException(
+                "Erro Léxico: " + message + " na linha " + line + ", coluna " + (column - (position - start)));
+    }
+
+    /**
+     * Avança a posição no código-fonte e retorna o caractere consumido.
+     * Também lida com a atualização de linha e coluna.
+     * * @return O caractere na posição atual (antes de avançar).
+     */
+    private char advance() {
+        char currentChar = sourceCode.charAt(position);
+        position++;
+
+        if (currentChar == '\n') {
+            line++;
+            column = 1;
+        } else {
+            column++;
+        }
+        return currentChar;
+    }
+
+    /**
+     * Adiciona um token à lista.
+     * * @param type O tipo de token (TokenType).
+     */
+    private void addToken(TokenType type) {
+        String value = sourceCode.substring(start, position);
+        tokens.add(new Token(type, value, line, (column - value.length())));
+    }
+
+    /**
+     * Adiciona um token à lista (sobrecarga para literais).
+     * * @param type  O tipo de token (TokenType).
+     * @param value O valor literal (para Strings, Números).
+     */
+    private void addToken(TokenType type, String value) {
+        tokens.add(new Token(type, value, line, (column - (position - start))));
+    }
+
+    /**
      * Olha o próximo caractere sem avançar a posição (Lookahead).
-     * 
-     * @return O próximo caractere ou '\0' se estiver no fim do arquivo.
+     * Este é o 'peek()' do código original.
+     * * @return O próximo caractere ou '\0' se estiver no fim do arquivo.
      */
 
-    private char peek() {
-        if (position + 1 >= sourceCode.length()) {
+     // TODO: a função olha o caractere atual, a doc está incorreta
+    private char peekNext() {
+        if (position >= sourceCode.length()) { // Nota: Verificamos 'position', não 'position + 1'
             return '\0';
         }
-        return sourceCode.charAt(position + 1);
+        return sourceCode.charAt(position); // 'position' é o *próximo* caractere a ser lido
+    }
+
+    /**
+     * Função 'match' (como solicitado).
+     * Se o *próximo* caractere for o esperado, consome-o (avança) e retorna true.
+     * Caso contrário, retorna false.
+     * * @param expected O caractere esperado no *lookahead*.
+     * @return true se o próximo caractere bater e for consumido.
+     */
+    private boolean match(char expected) {
+        if (peekNext() == expected) {
+            advance(); // Consome o caractere esperado
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Rotina principal de escaneamento. Despacha para a rotina correta.
+     */
+    private void scanToken() {
+        char c = advance(); // Consome o primeiro caractere do lexema
+
+        switch (c) {
+            // Símbolos de um caractere
+            case '(':
+                addToken(TokenType.OPEN_PAREN);
+                break;
+            case ')':
+                addToken(TokenType.CLOSE_PAREN);
+                break;
+            case '{':
+                addToken(TokenType.OPEN_BRACE);
+                break;
+            case '}':
+                addToken(TokenType.CLOSE_BRACE);
+                break;
+            case ';':
+                addToken(TokenType.SEMICOLON);
+                break;
+            case '+':
+                addToken(TokenType.PLUS);
+                break;
+            case '-':
+                addToken(TokenType.MINUS);
+                break;
+            case '*':
+                addToken(TokenType.MULTIPLY);
+                break;
+
+            // Símbolos de um ou dois caracteres (usando match)
+            case '=':
+                addToken(match('=') ? TokenType.EQUAL_EQUAL : TokenType.ASSIGN);
+                break;
+            case '!':
+                if (match('=')) {
+                    addToken(TokenType.NOT_EQUAL);
+                } else {
+                    lexicalError("Caractere inesperado '!'");
+                }
+                break;
+            case '>':
+                addToken(match('=') ? TokenType.GREATER_EQUAL : TokenType.GREATER_THAN);
+                break;
+            case '<':
+                addToken(match('=') ? TokenType.LESS_EQUAL : TokenType.LESS_THAN);
+                break;
+            case '&':
+                if (match('&')) {
+                    addToken(TokenType.AND);
+                } else {
+                    lexicalError("Caractere inesperado '&'");
+                }
+                break;
+            case '|':
+                if (match('|')) {
+                    addToken(TokenType.OR);
+                } else {
+                    lexicalError("Caractere inesperado '|'");
+                }
+                break;
+
+            // Comentários ou Divisão
+            case '/':
+                if (match('/')) { // Comentário de linha (ex: //)
+                    // Consome até o fim da linha
+                    while (peekNext() != '\n' && !isAtEnd()) {
+                        advance();
+                    }
+                } else if (match('*')) { // Comentário de bloco (ex: /* ... */)
+                    skipBlockComment();
+                } else {
+                    addToken(TokenType.DIVIDE);
+                }
+                break;
+
+            // Literais de String
+            case '"':
+                scanString();
+                break;
+
+
+            // Como advance() já cuidou de line++, esses dois cases podem ser unidos em um só
+            // Espaços em branco (ignorados)
+            case ' ', '\r', '\t':
+                break; // Ignora
+            case '\n':
+                // 'advance()' já cuidou de 'line' e 'column'
+                break;
+
+            // Default: Números, Identificadores ou Erros
+            default:
+                if (Character.isDigit(c)) {
+                    scanNumber();
+                } else if (Character.isLetter(c)) {
+                    scanIdentifier();
+                } else {
+                    lexicalError("Caractere inválido: '" + c + "'");
+                }
+                break;
+        }
+    }
+
+    /**
+     * Consome um comentário de bloco (ex: /* ... * /).
+     */
+    private void skipBlockComment() {
+        // O '/*' já foi consumido por advance() e match()
+        while (!(peekNext() == '*' && position + 1 < sourceCode.length() && sourceCode.charAt(position + 1) == '/')
+                && !isAtEnd()) {
+            advance(); // advance() lida com quebras de linha
+        }
+
+        if (isAtEnd()) {
+            lexicalError("Bloco de comentário não terminado.");
+            return;
+        }
+
+        // Consome os dois caracteres finais '*/'
+        advance(); // Consome o '*'
+        advance(); // Consome o '/'
+    }
+
+    /**
+     * Consome um literal de string (ex: "texto").
+     */
+    private void scanString() {
+        // O '"' inicial foi consumido por advance()
+        StringBuilder sb = new StringBuilder();
+
+        while (peekNext() != '"' && !isAtEnd()) {
+            if (peekNext() == '\n') {
+                lexicalError("String literal não fechada na linha.");
+                return; // Sai para a exceção ser lançada
+            }
+            sb.append(advance());
+        }
+
+        if (isAtEnd()) {
+            lexicalError("String literal não terminada.");
+            return;
+        }
+
+        advance(); // Consome o '"' final
+
+        // Adiciona o token usando o valor do StringBuilder
+        addToken(TokenType.STRING, sb.toString());
+    }
+
+    /**
+     * Consome um literal numérico (int ou float).
+     */
+    private void scanNumber() {
+        // O primeiro dígito já foi consumido por advance()
+        StringBuilder numberBuilder = new StringBuilder();
+        numberBuilder.append(sourceCode.charAt(start)); // Adiciona o primeiro dígito
+
+        // Lê a parte inteira
+        while (Character.isDigit(peekNext())) {
+            numberBuilder.append(advance());
+        }
+
+        // Verifica e lê a parte decimal (Float)
+        if (peekNext() == '.' && position + 1 < sourceCode.length()
+                && Character.isDigit(sourceCode.charAt(position + 1))) {
+            numberBuilder.append(advance()); // Consome o '.'
+
+            while (Character.isDigit(peekNext())) {
+                numberBuilder.append(advance());
+            }
+            addToken(TokenType.FLOAT_LITERAL, numberBuilder.toString());
+        } else {
+            // Se não for float, é um inteiro
+            addToken(TokenType.NUMBER, numberBuilder.toString());
+        }
+    }
+
+    /**
+     * Consome um identificador ou palavra-reservada.
+     */
+    private void scanIdentifier() {
+        // A primeira letra já foi consumida por advance()
+        StringBuilder idBuilder = new StringBuilder();
+        idBuilder.append(sourceCode.charAt(start)); // Adiciona a primeira letra
+
+        while (Character.isLetterOrDigit(peekNext())) {
+            idBuilder.append(advance());
+        }
+
+        String id = idBuilder.toString();
+        // Mapeamento para Palavras-Reservadas e Tipos
+        TokenType type = switch (id) {
+            case "while" -> TokenType.WHILE;
+            case "print" -> TokenType.PRINT;
+            case "if" -> TokenType.IF;
+            case "else" -> TokenType.ELSE;
+            case "int" -> TokenType.INT;
+            case "float" -> TokenType.FLOAT;
+            case "bool" -> TokenType.BOOL;
+            case "string" -> TokenType.STRING_TYPE;
+            case "true" -> TokenType.TRUE;
+            case "false" -> TokenType.FALSE;
+            default -> TokenType.IDENTIFIER;
+        };
+        addToken(type); // Adiciona o token (o 'value' é pego pelo substring)
     }
 }

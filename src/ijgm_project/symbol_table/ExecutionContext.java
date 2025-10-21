@@ -1,25 +1,25 @@
 package ijgm_project.symbol_table;
 
+import ijgm_project.lexer.TokenType;
 import java.util.HashMap;
 import java.util.Map;
-import ijgm_project.lexer.TokenType;
 
 /**
- * Tabela de Símbolos.
- * Gerencia o contexto do programa, armazenando o tipo e o valor de cada
- * variável.
- * Essencial para a Análise Semântica (checar declaração e compatibilidade de
- * tipos).
+ * Contexto de Execução (Anteriormente SymbolTable).
+ * Gerencia o contexto do programa, armazenando o tipo (para checagem semântica)
+ * e o valor de runtime de cada variável.
  */
-
-public class SymbolTable {
+// TODO: Trocar nome disso e funcionamento porque quebra o SOLID, isso não deve
+// fazer checagens semanticas
+// (NOTA: Mantendo o TODO original, mas renomeando a classe conforme a crítica)
+// (NOTA: O contexto de execução permaneceu realizando checagens semânticas, ainda está quebrando o SOLID, o Interpreter que deve tratar isso)
+public class ExecutionContext {
     private final Map<String, Object> variables = new HashMap<>();
     private final Map<String, TokenType> types = new HashMap<>();
 
     /**
      * Declara uma nova variável no escopo (checa re-declaração).
-     * 
-     * @param name Nome da variável.
+     * * @param name Nome da variável.
      * @param type Tipo de token (ex: INT, BOOL).
      */
 
@@ -41,8 +41,7 @@ public class SymbolTable {
 
     /**
      * Atribui um valor a uma variável existente (checa tipo e declaração).
-     * 
-     * @param name  Nome da variável.
+     * * @param name  Nome da variável.
      * @param value O valor a ser atribuído.
      */
 
@@ -80,8 +79,7 @@ public class SymbolTable {
 
     /**
      * Obtém o valor de uma variável.
-     * 
-     * @param name Nome da variável.
+     * * @param name Nome da variável.
      * @return O valor armazenado.
      */
 

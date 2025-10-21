@@ -3,32 +3,34 @@ package ijgm_project.visitor;
 import ijgm_project.parser.ast.*;
 
 /**
- * Interface do Padrão Visitor.
- * Define um método 'visit' para cada classe concreta de nó da AST,
- * garantindo o princípio de que a lógica da operação é separada da estrutura.
+ * Interface do Padrão Visitor (Refatorada com Genéricos).
+ * Define um método 'visit' para cada classe concreta de nó da AST.
+ * Cada método agora retorna um valor de tipo genérico 'R'.
  */
-public interface Visitor {
+public interface Visitor<R> {
     // Métodos para comandos (Statements)
-    void visit(AssignStatement statement);
+    // TODO: Se comandos não retornam nada, considerar usar Void como tipo genérico, 
+    // TODO: separar os métodos para visitar comandos em outra interface
+    R visit(AssignStatement statement);
 
-    void visit(PrintStatement statement);
+    R visit(PrintStatement statement);
 
-    void visit(WhileStatement statement);
+    R visit(WhileStatement statement);
 
-    void visit(IfStatement statement);
+    R visit(IfStatement statement);
 
-    void visit(DeclarationStatement statement);
+    R visit(DeclarationStatement statement);
 
     // Métodos para expressões (Expressions)
-    void visit(BinaryExpression expression);
+    R visit(BinaryExpression expression);
 
-    void visit(NumberExpression expression);
+    R visit(NumberExpression expression);
 
-    void visit(FloatExpression expression); // Para literais float
+    R visit(FloatExpression expression);
 
-    void visit(VariableExpression expression);
+    R visit(VariableExpression expression);
 
-    void visit(StringExpression expression);
+    R visit(StringExpression expression);
 
-    void visit(BooleanExpression expression);
+    R visit(BooleanExpression expression);
 }

@@ -4,15 +4,14 @@ import ijgm_project.visitor.Visitor;
 
 /**
  * Interface base para todos os comandos (statements) da AST.
- * É a raiz da hierarquia do Padrão Composite para comandos executáveis.
+ * (Refatorada com Genéricos).
  */
-
 public interface Statement {
     /**
      * O método accept faz parte do Padrão Visitor.
-     * Ele permite que o Visitor (Intérprete, Printer, etc.) visite este nó.
-     * 
-     * @param visitor O objeto Visitor que irá processar este nó.
+     * (Refatorado para aceitar um Visitor<R> e retornar R).
+     * * @param visitor O objeto Visitor que irá processar este nó.
+     * @return O resultado da visita (tipo R).
      */
-    void accept(Visitor visitor);
+    <R> R accept(Visitor<R> visitor);
 }
