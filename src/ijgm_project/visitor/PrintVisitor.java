@@ -81,6 +81,16 @@ public class PrintVisitor implements Visitor<Void> {
         return null;
     }
     @Override
+    public Void visit(ScopeStatement statement) {
+        print("ScopeStatement");
+        indent++;
+        for (Statement stmt : statement.getStatements()) {
+            stmt.accept(this);
+        }
+        indent--;
+        return null;
+    }
+    @Override
     public Void visit(BinaryExpression expression) {
         print("BinaryExpression: " + expression.getOperator());
         indent++;

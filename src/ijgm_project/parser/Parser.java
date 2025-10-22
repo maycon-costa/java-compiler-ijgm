@@ -135,6 +135,7 @@ public class Parser {
     private Statement parseStatement() {
         return switch (currentToken.getType()) {
             case IDENTIFIER -> parseAssignment();
+            case OPEN_BRACE -> parseScope();
             case PRINT -> parsePrintStatement();
             case WHILE -> parseWhileStatement();
             case IF -> parseIfStatement();
@@ -149,6 +150,21 @@ public class Parser {
                         " na linha " + currentToken.getLine() + ", coluna " + currentToken.getColumn());
             }
         };
+    }
+
+    private Statement parseScope() {
+        consume(TokenType.OPEN_BRACE);
+        List<Statement> statements = new ArrayList<>();
+        while (currentToken.getType() != TokenType.CLOSE_BRACE && currentToken.getType() != TokenType.EOF) {
+            statements.add(parseStatement());
+        }
+        
+        if(currentToken.getType() == TokenType.EOF) {
+            reportError("Escopo não fechado. Esperado '}' mas encontrou Fim de Arquivo.");
+        } else {
+            consume(TokenType.CLOSE_BRACE); // Consome o '}'
+        }
+        return new ScopeStatement(statements);
     }
 
     /**

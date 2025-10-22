@@ -248,4 +248,13 @@ public class InterpreterVisitor implements Visitor<Object> {
     public Object visit(LiteralExpression expression) {
         return expression.getValue();
     }
+
+    @Override
+    public Object visit(ScopeStatement statement) {
+        for(Statement stmt : statement.getStatements()) {
+            execute(stmt);
+        }
+
+        return null;
+    }
 }

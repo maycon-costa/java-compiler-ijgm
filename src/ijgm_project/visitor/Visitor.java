@@ -14,6 +14,7 @@ public interface Visitor<R> {
     R visit(WhileStatement statement);
     R visit(IfStatement statement);
     R visit(DeclarationStatement statement);
+    R visit(ScopeStatement statement);
 
     // Métodos para expressões (Expressions)
     R visit(BinaryExpression expression);
