@@ -6,6 +6,7 @@ import ijgm_project.parser.ast.*;
  * Implementa a operação de impressão (visualização) da AST.
  * (Refatorado para implementar Visitor<Void>).
  * (Refatorado para usar LiteralExpression).
+ * (Atualizado para incluir IncrementStatement).
  */
 public class PrintVisitor implements Visitor<Void> {
 
@@ -90,6 +91,22 @@ public class PrintVisitor implements Visitor<Void> {
         indent--;
         return null;
     }
+    
+    // --- NOVO MÉTODO ---
+    @Override
+    public Void visit(IncrementStatement statement) {
+        print("IncrementStatement: " + statement.getVariableName());
+        return null;
+    }
+    
+    // --- NOVO MÉTODO ---
+    @Override
+    public Void visit(DecrementStatement statement) {
+        print("DecrementStatement: " + statement.getVariableName());
+        return null;
+    }
+    // --- FIM DO NOVO MÉTODO ---
+
     @Override
     public Void visit(BinaryExpression expression) {
         print("BinaryExpression: " + expression.getOperator());

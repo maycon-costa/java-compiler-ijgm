@@ -7,11 +7,9 @@ import java.util.Stack;
 /**
  * A Máquina Virtual (VM) da linguagem IJGM.
  *
- * Esta classe é o "executor" do bytecode. Ela é uma VM baseada em pilha
- * que lê uma lista de Opcodes (o BytecodeChunk) e os executa.
- *
- * Ela substitui o 'InterpreterVisitor'
- * como o motor de execução final.
+ * (Atualizada para corrigir o Furo #2 - Inconsistência de ++/-- com Floats)
+ * (Atualizada para corrigir o Furo #3 - Verificação de "Truthiness" em
+ * Jumps)
  */
 public class VM {
 
@@ -51,16 +49,15 @@ public class VM {
      * @return O resultado da interpretação (OK ou RUNTIME_ERROR).
      */
     public InterpretResult run() {
-    try {
-        while (ip < chunk.getCode().size()) {
-            // 1. Fetch & Decode (Buscar e Decodificar)
-            byte rawInstruction = readByte();
+        try {
+            while (ip < chunk.getCode().size()) {
+                // 1. Fetch & Decode (Buscar e Decodificar)
+                byte rawInstruction = readByte();
 
-            // CORRIGIDO: Maneira mais robusta de decodificar o byte
-            OpCode instruction = OpCode.fromByte(rawInstruction);
+                OpCode instruction = OpCode.fromByte(rawInstruction);
 
-            // 2. Execute (Executar)
-            switch (instruction) {
+                // 2. Execute (Executar)
+                switch (instruction) {
 
                     // --- Opcodes de Pilha e Literais ---
                     case OP_PUSH_CONST -> {
@@ -81,29 +78,31 @@ public class VM {
                     case OP_EQUAL -> {
                         Object b = pop();
                         Object a = pop();
-                        if (a == null) push(b == null);
-                        else push(a.equals(b));
+                        if (a == null)
+                            push(b == null);
+                        else
+                            push(a.equals(b));
                     }
                     case OP_NOT_EQUAL -> {
                         Object b = pop();
                         Object a = pop();
-                        if (a == null) push(b != null);
-                        else push(!a.equals(b));
+                        if (a == null)
+                            push(b != null);
+                        else
+                            push(!a.equals(b));
                     }
                     case OP_GREATER -> binaryNumericOp(OpCode.OP_GREATER);
                     case OP_GREATER_EQUAL -> binaryNumericOp(OpCode.OP_GREATER_EQUAL);
                     case OP_LESS -> binaryNumericOp(OpCode.OP_LESS);
                     case OP_LESS_EQUAL -> binaryNumericOp(OpCode.OP_LESS_EQUAL);
-                    
-                    // --- CORREÇÃO APLICADA AQUI ---
-                    // (Assumindo que OP_AND e OP_OR foram adicionados ao OpCode.java)
+
                     case OP_AND -> {
                         Object b = pop();
                         Object a = pop();
                         if (!(a instanceof Boolean) || !(b instanceof Boolean)) {
                             return runtimeError("Operandos para '&&' devem ser booleanos.");
                         }
-                        push((Boolean)a && (Boolean)b);
+                        push((Boolean) a && (Boolean) b);
                     }
                     case OP_OR -> {
                         Object b = pop();
@@ -111,9 +110,8 @@ public class VM {
                         if (!(a instanceof Boolean) || !(b instanceof Boolean)) {
                             return runtimeError("Operandos para '||' devem ser booleanos.");
                         }
-                        push((Boolean)a || (Boolean)b);
+                        push((Boolean) a || (Boolean) b);
                     }
-                    // --- FIM DA CORREÇÃO ---
 
                     // --- Opcodes de Variáveis Globais ---
                     case OP_DEFINE_GLOBAL -> {
@@ -152,43 +150,102 @@ public class VM {
                         short offset = readByte();
                         ip += offset;
                     }
+
+                    // --- CORREÇÃO (FURO #3) ---
+                    // Adicionada checagem de tipo antes de chamar isFalsey
                     case OP_JUMP_IF_FALSE -> {
                         short offset = readByte();
                         Object condition = pop(); // Pula e SEMPRE consome a condição
-                        if (isFalsey(condition)) {
+
+                        // Checagem de tipo estrito
+                        if (!(condition instanceof Boolean)) {
+                            return runtimeError("Condição do 'if' ou 'while' deve ser um booleano.");
+                        }
+
+                        if (isFalsey(condition)) { // isFalsey agora só recebe booleanos
                             ip += offset;
                         }
                     }
+                    // --- FIM DA CORREÇÃO #3 ---
 
                     // --- Opcodes de Comandos ---
                     case OP_PRINT -> {
                         System.out.println("Output: " + pop());
                     }
                     case OP_RETURN -> {
-                        // (Opcional: imprimir o valor final da pilha)
-                        // if (!stack.isEmpty()) {
-                        //     System.out.println("Result: " + pop());
-                        // }
                         return InterpretResult.OK; // Fim da execução
                     }
-                    
+
                     // (Bônus: Opcodes do OpCode.java [from context])
                     case OP_NEGATE -> {
                         Object val = pop();
-                        if (val instanceof Integer) push(-(Integer)val);
-                        else if (val instanceof Float) push(-(Float)val);
-                        else return runtimeError("Operando para '-' deve ser um número.");
+                        if (val instanceof Integer)
+                            push(-(Integer) val);
+                        else if (val instanceof Float)
+                            push(-(Float) val);
+                        else
+                            return runtimeError("Operando para '-' deve ser um número.");
                     }
                     case OP_NOT -> {
                         push(isFalsey(pop()));
                     }
+
+                    // --- CORREÇÃO (FURO #2) ---
+                    // Lógica de incremento/decremento atualizada para aceitar Float
                     case OP_INCREMENT_LOCAL -> {
                         int slot = readByte() & 0xFF;
                         Object val = stack.get(slot);
-                        if (!(val instanceof Integer)) return runtimeError("Operando '++' deve ser um Integer.");
-                        stack.set(slot, (Integer)val + 1);
+                        if (val instanceof Integer) {
+                            stack.set(slot, (Integer) val + 1);
+                        } else if (val instanceof Float) {
+                            stack.set(slot, (Float) val + 1.0f);
+                        } else {
+                            return runtimeError("Operando '++' deve ser um número (Integer ou Float).");
+                        }
                     }
-                    // (Implementação do INCREMENT_GLOBAL omitida por brevidade)
+
+                    case OP_INCREMENT_GLOBAL -> {
+                        String name = readConstantName();
+                        if (!globals.containsKey(name)) {
+                            return runtimeError("Variável global '" + name + "' não definida para '++'.");
+                        }
+                        Object val = globals.get(name);
+                        if (val instanceof Integer) {
+                            globals.put(name, (Integer) val + 1);
+                        } else if (val instanceof Float) {
+                            globals.put(name, (Float) val + 1.0f);
+                        } else {
+                            return runtimeError("Operando '++' deve ser um número (Integer ou Float).");
+                        }
+                    }
+
+                    case OP_DECREMENT_LOCAL -> {
+                        int slot = readByte() & 0xFF;
+                        Object val = stack.get(slot);
+                        if (val instanceof Integer) {
+                            stack.set(slot, (Integer) val - 1);
+                        } else if (val instanceof Float) {
+                            stack.set(slot, (Float) val - 1.0f);
+                        } else {
+                            return runtimeError("Operando '--' deve ser um número (Integer ou Float).");
+                        }
+                    }
+
+                    case OP_DECREMENT_GLOBAL -> {
+                        String name = readConstantName();
+                        if (!globals.containsKey(name)) {
+                            return runtimeError("Variável global '" + name + "' não definida para '--'.");
+                        }
+                        Object val = globals.get(name);
+                        if (val instanceof Integer) {
+                            globals.put(name, (Integer) val - 1);
+                        } else if (val instanceof Float) {
+                            globals.put(name, (Float) val - 1.0f);
+                        } else {
+                            return runtimeError("Operando '--' deve ser um número (Integer ou Float).");
+                        }
+                    }
+                    // --- FIM DA CORREÇÃO #2 ---
 
                     default -> {
                         return runtimeError("Opcode desconhecido: " + instruction);
@@ -214,7 +271,7 @@ public class VM {
         ip += 2;
         byte high = chunk.getCode().get(ip - 2);
         byte low = chunk.getCode().get(ip - 1);
-        return (short)((high << 8) | (low & 0xFF));
+        return (short) ((high << 8) | (low & 0xFF));
     }
 
     /** Lê um operando de constante (o índice) e busca o valor na pool. */
@@ -241,14 +298,18 @@ public class VM {
         return stack.pop();
     }
 
-    /** "Espia" um valor na pilha sem removê-lo.
-     * peek(0) = topo, peek(1) = segundo item. */
+    /**
+     * "Espia" um valor na pilha sem removê-lo.
+     * peek(0) = topo, peek(1) = segundo item.
+     */
     private Object peek(int distance) {
         return stack.get(stack.size() - 1 - distance);
     }
 
     /** Define quais valores são "falsos" na linguagem (apenas 'false'). */
     private boolean isFalsey(Object condition) {
+        // Esta checagem agora é segura, pois 'condition' sempre será um Boolean
+        // graças à correção no OP_JUMP_IF_FALSE.
         return (condition instanceof Boolean) && !(Boolean) condition;
     }
 
@@ -277,7 +338,7 @@ public class VM {
     private void binaryNumericOp(OpCode op) {
         Object b = pop();
         Object a = pop();
-        
+
         // Coerção: int -> float (como no InterpreterVisitor)
         if (a instanceof Integer && b instanceof Float) {
             a = ((Integer) a).floatValue();
@@ -289,30 +350,58 @@ public class VM {
             float valA = (Float) a;
             float valB = (Float) b;
             switch (op) {
-                case OP_SUBTRACT: push(valA - valB); break;
-                case OP_MULTIPLY: push(valA * valB); break;
+                case OP_SUBTRACT:
+                    push(valA - valB);
+                    break;
+                case OP_MULTIPLY:
+                    push(valA * valB);
+                    break;
                 case OP_DIVIDE:
-                    if (valB == 0.0f) throw new RuntimeException("Divisão por zero.");
-                    push(valA / valB); break;
-                case OP_GREATER: push(valA > valB); break;
-                case OP_GREATER_EQUAL: push(valA >= valB); break;
-                case OP_LESS: push(valA < valB); break;
-                case OP_LESS_EQUAL: push(valA <= valB); break;
+                    if (valB == 0.0f)
+                        throw new RuntimeException("Divisão por zero.");
+                    push(valA / valB);
+                    break;
+                case OP_GREATER:
+                    push(valA > valB);
+                    break;
+                case OP_GREATER_EQUAL:
+                    push(valA >= valB);
+                    break;
+                case OP_LESS:
+                    push(valA < valB);
+                    break;
+                case OP_LESS_EQUAL:
+                    push(valA <= valB);
+                    break;
                 default: // Unreachable
             }
         } else if (a instanceof Integer && b instanceof Integer) {
             int valA = (Integer) a;
             int valB = (Integer) b;
             switch (op) {
-                case OP_SUBTRACT: push(valA - valB); break;
-                case OP_MULTIPLY: push(valA * valB); break;
+                case OP_SUBTRACT:
+                    push(valA - valB);
+                    break;
+                case OP_MULTIPLY:
+                    push(valA * valB);
+                    break;
                 case OP_DIVIDE:
-                    if (valB == 0) throw new RuntimeException("Divisão por zero.");
-                    push(valA / valB); break;
-                case OP_GREATER: push(valA > valB); break;
-                case OP_GREATER_EQUAL: push(valA >= valB); break;
-                case OP_LESS: push(valA < valB); break;
-                case OP_LESS_EQUAL: push(valA <= valB); break;
+                    if (valB == 0)
+                        throw new RuntimeException("Divisão por zero.");
+                    push(valA / valB);
+                    break;
+                case OP_GREATER:
+                    push(valA > valB);
+                    break;
+                case OP_GREATER_EQUAL:
+                    push(valA >= valB);
+                    break;
+                case OP_LESS:
+                    push(valA < valB);
+                    break;
+                case OP_LESS_EQUAL:
+                    push(valA <= valB);
+                    break;
                 default: // Unreachable
             }
         } else {

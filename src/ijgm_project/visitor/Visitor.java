@@ -15,6 +15,10 @@ public interface Visitor<R> {
     R visit(IfStatement statement);
     R visit(DeclarationStatement statement);
     R visit(ScopeStatement statement);
+    
+    // --- NOVOS MÉTODOS ---
+    R visit(IncrementStatement statement);
+    R visit(DecrementStatement statement); // <-- ADICIONADO
 
     // Métodos para expressões (Expressions)
     R visit(BinaryExpression expression);

@@ -47,7 +47,11 @@ public enum OpCode {
     OP_PRINT(25),
     OP_INCREMENT_LOCAL(26), // (Bônus)
     OP_INCREMENT_GLOBAL(27), // (Bônus)
-    OP_RETURN(28);
+    OP_RETURN(28),
+    
+    // --- NOVOS OPCODES ---
+    OP_DECREMENT_LOCAL(29), // (Bônus)
+    OP_DECREMENT_GLOBAL(30); // (Bônus)
 
 
     // --- A Lógica da Boa Prática ---

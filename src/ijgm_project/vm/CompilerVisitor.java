@@ -1,6 +1,5 @@
 package ijgm_project.vm;
 
-import ijgm_project.lexer.TokenType;
 import ijgm_project.parser.ast.*;
 import ijgm_project.visitor.Visitor;
 import java.util.List;
@@ -8,10 +7,10 @@ import java.util.List;
 /**
  * Traduz a AST para Bytecode.
  * (Corrigido para usar OpCode.getValue() - A Boa Prática)
+ * (Corrigido o bug de "off-by-one" do emitLoopJump)
  */
 public class CompilerVisitor implements Visitor<Void> {
 
-    // ... (Construtor e método 'compile' não mudam) ...
     private final BytecodeChunk chunk;
     private final CompilerSymbolTable table;
 
@@ -25,7 +24,6 @@ public class CompilerVisitor implements Visitor<Void> {
             for (Statement stmt : ast) {
                 stmt.accept(this);
             }
-            // CORRIGIDO: Sem cast!
             chunk.writeByte(OpCode.OP_RETURN.getValue());
             return this.chunk;
         } catch (Exception e) {
@@ -38,11 +36,8 @@ public class CompilerVisitor implements Visitor<Void> {
     @Override
     public Void visit(LiteralExpression expression) {
         int constantIndex = chunk.addConstant(expression.getValue());
-
-        // CORRIGIDO: Sem cast!
         chunk.writeByte(OpCode.OP_PUSH_CONST.getValue());
         chunk.writeByte((byte) constantIndex); 
-        
         return null;
     }
 
@@ -51,7 +46,6 @@ public class CompilerVisitor implements Visitor<Void> {
         expression.getLeft().accept(this);
         expression.getRight().accept(this);
 
-        // CORRIGIDO: Sem casts!
         switch (expression.getOperator()) {
             case PLUS -> chunk.writeByte(OpCode.OP_ADD.getValue());
             case MINUS -> chunk.writeByte(OpCode.OP_SUBTRACT.getValue());
@@ -63,10 +57,8 @@ public class CompilerVisitor implements Visitor<Void> {
             case GREATER_EQUAL -> chunk.writeByte(OpCode.OP_GREATER_EQUAL.getValue());
             case LESS_THAN -> chunk.writeByte(OpCode.OP_LESS.getValue());
             case LESS_EQUAL -> chunk.writeByte(OpCode.OP_LESS_EQUAL.getValue());
-            
             case AND -> chunk.writeByte(OpCode.OP_AND.getValue());
             case OR -> chunk.writeByte(OpCode.OP_OR.getValue());
-            
             default -> throw new RuntimeException("Operador binário desconhecido: " + expression.getOperator());
         }
         return null;
@@ -76,7 +68,6 @@ public class CompilerVisitor implements Visitor<Void> {
     public Void visit(VariableExpression expression) {
         CompilerSymbolTable.Symbol symbol = table.resolve(expression.getName());
 
-        // CORRIGIDO: Sem cast!
         if (symbol.isLocal) {
             chunk.writeByte(OpCode.OP_LOAD_LOCAL.getValue());
             chunk.writeByte((byte) symbol.index);
@@ -100,13 +91,11 @@ public class CompilerVisitor implements Visitor<Void> {
         };
         
         int constIndex = chunk.addConstant(defaultValue);
-        // CORRIGIDO: Sem cast!
         chunk.writeByte(OpCode.OP_PUSH_CONST.getValue());
         chunk.writeByte((byte) constIndex);
 
         CompilerSymbolTable.Symbol symbol = table.declare(statement.getVariableName(), chunk);
 
-        // CORRIGIDO: Sem cast!
         if (!symbol.isLocal) {
             chunk.writeByte(OpCode.OP_DEFINE_GLOBAL.getValue());
             chunk.writeByte((byte) symbol.index);
@@ -119,7 +108,6 @@ public class CompilerVisitor implements Visitor<Void> {
         statement.getExpression().accept(this);
         CompilerSymbolTable.Symbol symbol = table.resolve(statement.getVariableName());
 
-        // CORRIGIDO: Sem cast!
         if (symbol.isLocal) {
             chunk.writeByte(OpCode.OP_STORE_LOCAL.getValue());
             chunk.writeByte((byte) symbol.index);
@@ -129,11 +117,39 @@ public class CompilerVisitor implements Visitor<Void> {
         }
         return null;
     }
+    
+    @Override
+    public Void visit(IncrementStatement statement) {
+        CompilerSymbolTable.Symbol symbol = table.resolve(statement.getVariableName());
+
+        if (symbol.isLocal) {
+            chunk.writeByte(OpCode.OP_INCREMENT_LOCAL.getValue());
+            chunk.writeByte((byte) symbol.index);
+               } else {
+            chunk.writeByte(OpCode.OP_INCREMENT_GLOBAL.getValue());
+           chunk.writeByte((byte) symbol.index);
+        }
+        return null;
+    }
+
+    @Override
+    public Void visit(DecrementStatement statement) {
+        CompilerSymbolTable.Symbol symbol = table.resolve(statement.getVariableName());
+
+        if (symbol.isLocal) {
+            chunk.writeByte(OpCode.OP_DECREMENT_LOCAL.getValue());
+            chunk.writeByte((byte) symbol.index);
+        } else {
+            chunk.writeByte(OpCode.OP_DECREMENT_GLOBAL.getValue());
+            chunk.writeByte((byte) symbol.index);
+        }
+        return null;
+    }
+
 
     @Override
     public Void visit(PrintStatement statement) {
         statement.getExpression().accept(this);
-        // CORRIGIDO: Sem cast!
         chunk.writeByte(OpCode.OP_PRINT.getValue());
         return null;
     }
@@ -148,7 +164,6 @@ public class CompilerVisitor implements Visitor<Void> {
 
         int numPopped = table.endScope();
 
-        // CORRIGIDO: Sem cast!
         for (int i = 0; i < numPopped; i++) {
             chunk.writeByte(OpCode.OP_POP.getValue());
         }
@@ -159,14 +174,12 @@ public class CompilerVisitor implements Visitor<Void> {
     public Void visit(IfStatement statement) {
         statement.getCondition().accept(this);
 
-        // CORRIGIDO: Sem cast!
         int thenJump = emitJump(OpCode.OP_JUMP_IF_FALSE.getValue());
 
         for (Statement stmt : statement.getThenBody()) {
             stmt.accept(this);
         }
 
-        // CORRIGIDO: Sem cast!
         int elseJump = emitJump(OpCode.OP_JUMP.getValue());
 
         patchJump(thenJump);
@@ -188,14 +201,13 @@ public class CompilerVisitor implements Visitor<Void> {
 
         statement.getCondition().accept(this);
 
-        // CORRIGIDO: Sem cast!
         int exitJump = emitJump(OpCode.OP_JUMP_IF_FALSE.getValue());
 
         for (Statement stmt : statement.getBody()) {
             stmt.accept(this);
         }
 
-        emitLoopJump(loopStart);
+        emitLoopJump(loopStart); // <-- Chamada do método corrigido
 
         patchJump(exitJump);
 
@@ -204,14 +216,16 @@ public class CompilerVisitor implements Visitor<Void> {
 
     // --- MÉTODOS AUXILIARES (Helpers) ---
 
-    // O helper agora recebe o 'byte' direto do OpCode.getValue()
+    // (Helper de 'if', não muda e está correto)
     private int emitJump(byte instruction) {
         chunk.writeByte(instruction);
         chunk.writeByte((byte) 0xFF); // Placeholder
-        return chunk.getCode().size() - 1;
+        return chunk.getCode().size() - 1; // Endereço do placeholder
     }
 
+    // (Helper de 'if', não muda e está correto)
     private void patchJump(int offsetAddress) {
+        // O pulo é relativo ao *fim* da instrução de pulo (ip + 2)
         int jump = chunk.getCode().size() - offsetAddress - 1;
 
         if (jump > 255) {
@@ -221,15 +235,20 @@ public class CompilerVisitor implements Visitor<Void> {
         chunk.getCode().set(offsetAddress, (byte) jump);
     }
 
+    // --- CORREÇÃO (FURO DO JUMP) ---
+    // A lógica de cálculo do offset para pulos para trás é diferente.
     private void emitLoopJump(int loopStart) {
-        // CORRIGIDO: Sem cast!
         chunk.writeByte(OpCode.OP_JUMP.getValue());
 
-        int offset = chunk.getCode().size() - loopStart + 2;
-        if (offset > 255) {
+        // O offset é (destino - (local_atual + 2))
+        // +1 para o operando que estamos prestes a escrever
+        int ip_after_jump = chunk.getCode().size() + 1; 
+        int offset = loopStart - ip_after_jump;
+
+        if (Math.abs(offset) > 255) {
             throw new RuntimeException("Erro de Compilação: Corpo de loop muito grande.");
         }
 
-        chunk.writeByte((byte) (-offset));
+        chunk.writeByte((byte) offset);
     }
 }

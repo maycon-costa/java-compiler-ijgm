@@ -112,8 +112,12 @@ public class Decompiler {
             case OP_STORE_GLOBAL:
             case OP_LOAD_LOCAL:
             case OP_STORE_LOCAL:
+            // --- MUDANÇA AQUI ---
             case OP_INCREMENT_LOCAL:
             case OP_INCREMENT_GLOBAL:
+            case OP_DECREMENT_LOCAL:
+            case OP_DECREMENT_GLOBAL:
+            // --- FIM DA MUDANÇA ---
                 return slotInstruction(op.name(), chunk, ip);
 
             // --- 4. Instruções de Salto (1 byte + 1 operando) ---

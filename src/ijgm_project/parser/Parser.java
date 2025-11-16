@@ -134,7 +134,10 @@ public class Parser {
      */
     private Statement parseStatement() {
         return switch (currentToken.getType()) {
-            case IDENTIFIER -> parseAssignment();
+            // --- MUDANÇA AQUI ---
+            case IDENTIFIER -> parseAssignmentOrIncrementOrDecrement(); // <-- RENOMEADO
+            // --- FIM DA MUDANÇA ---
+            
             case OPEN_BRACE -> parseScope();
             case PRINT -> parsePrintStatement();
             case WHILE -> parseWhileStatement();
@@ -189,15 +192,41 @@ public class Parser {
 
     /**
      * Regra: Atribuição -> id = Expressao ;
+     * OU
+     * Regra: Incremento -> id ++ ;
+     * OU
+     * Regra: Decremento -> id -- ;
      */
-    private Statement parseAssignment() {
+    private Statement parseAssignmentOrIncrementOrDecrement() {
         String varName = currentToken.getValue();
-        consume(TokenType.IDENTIFIER);
-        consume(TokenType.ASSIGN);
-        Expression expr = parseExpression();
-        consume(TokenType.SEMICOLON);
-        return new AssignStatement(varName, expr);
+        consume(TokenType.IDENTIFIER); // Consome o 'id'
+
+        // Verifica o que vem a seguir
+        if (currentToken.getType() == TokenType.ASSIGN) {
+            consume(TokenType.ASSIGN); // Consome o '='
+            Expression expr = parseExpression();
+            consume(TokenType.SEMICOLON);
+            return new AssignStatement(varName, expr);
+            
+        } else if (currentToken.getType() == TokenType.INCREMENT) {
+            consume(TokenType.INCREMENT); // Consome o '++'
+            consume(TokenType.SEMICOLON);
+            return new IncrementStatement(varName);
+
+        // --- MUDANÇA AQUI ---
+        } else if (currentToken.getType() == TokenType.DECREMENT) {
+            consume(TokenType.DECREMENT); // Consome o '--'
+            consume(TokenType.SEMICOLON);
+            return new DecrementStatement(varName);
+        // --- FIM DA MUDANÇA ---
+
+        } else {
+            reportError("Esperado '=', '++' ou '--' após o identificador '" + varName + "'");
+            synchronize();
+            throw new RuntimeException("Sintaxe de atribuição, incremento ou decremento inválida.");
+        }
     }
+
 
     /**
      * Regra: Print -> print Expressao ;
