@@ -18,10 +18,10 @@ public enum OpCode {
     OP_SUBTRACT(4),
     OP_MULTIPLY(5),
     OP_DIVIDE(6),
-    OP_NEGATE(7), // (Bônus)
+    OP_NEGATE(7),
 
     // --- 3. Lógica e Comparação ---
-    OP_NOT(8), // (Bônus)
+    OP_NOT(8),
     OP_EQUAL(9),
     OP_NOT_EQUAL(10),
     OP_GREATER(11),
@@ -45,14 +45,13 @@ public enum OpCode {
     // --- 6. Auxiliares e Extras ---
     OP_POP(24),
     OP_PRINT(25),
-    OP_INCREMENT_LOCAL(26), // (Bônus)
-    OP_INCREMENT_GLOBAL(27), // (Bônus)
+    OP_INCREMENT_LOCAL(26),
+    OP_INCREMENT_GLOBAL(27),
     OP_RETURN(28),
-    
-    // --- NOVOS OPCODES ---
-    OP_DECREMENT_LOCAL(29), // (Bônus)
-    OP_DECREMENT_GLOBAL(30); // (Bônus)
 
+    // --- NOVOS OPCODES ---
+    OP_DECREMENT_LOCAL(29),
+    OP_DECREMENT_GLOBAL(30);
 
     // --- A Lógica da Boa Prática ---
 
@@ -72,6 +71,7 @@ public enum OpCode {
 
     /**
      * O novo método que o CompilerVisitor usará.
+     * 
      * @return O valor de byte exato desta instrução.
      */
     public byte getValue() {

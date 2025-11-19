@@ -35,6 +35,7 @@ print i; // Esperado: 0
 // --- NOVO TESTE (CORREÇÃO FURO #2) ---
 print "--- Testando Decremento FLOAT ---";
 f = 10.5;
+
 print "Float inicial:";
 print f; // Esperado: 10.5
 
@@ -55,3 +56,6 @@ print "Float (f--):";
 print f; // Esperado: 10.5
 
 print "Fim do teste de float.";
+if (10){
+    
+}

@@ -35,6 +35,7 @@ public class VM {
 
     /**
      * Construtor da VM.
+     * 
      * @param chunk O "cartucho" de bytecode compilado pelo CompilerVisitor.
      */
     public VM(BytecodeChunk chunk) {
@@ -46,6 +47,7 @@ public class VM {
 
     /**
      * O "coração" da VM. Executa o bytecode em um loop.
+     * 
      * @return O resultado da interpretação (OK ou RUNTIME_ERROR).
      */
     public InterpretResult run() {
@@ -176,7 +178,6 @@ public class VM {
                         return InterpretResult.OK; // Fim da execução
                     }
 
-                    // (Bônus: Opcodes do OpCode.java [from context])
                     case OP_NEGATE -> {
                         Object val = pop();
                         if (val instanceof Integer)

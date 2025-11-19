@@ -28,6 +28,7 @@ public class PrintVisitor implements Visitor<Void> {
         indent--;
         return null;
     }
+
     @Override
     public Void visit(PrintStatement statement) {
         print("PrintStatement");
@@ -36,6 +37,7 @@ public class PrintVisitor implements Visitor<Void> {
         indent--;
         return null;
     }
+
     @Override
     public Void visit(WhileStatement statement) {
         print("WhileStatement");
@@ -52,6 +54,7 @@ public class PrintVisitor implements Visitor<Void> {
         indent--;
         return null;
     }
+
     @Override
     public Void visit(IfStatement statement) {
         print("IfStatement");
@@ -76,11 +79,13 @@ public class PrintVisitor implements Visitor<Void> {
         }
         return null;
     }
+
     @Override
     public Void visit(DeclarationStatement statement) {
         print("DeclarationStatement: " + statement.getVariableName() + " (" + statement.getType() + ")");
         return null;
     }
+
     @Override
     public Void visit(ScopeStatement statement) {
         print("ScopeStatement");
@@ -91,14 +96,14 @@ public class PrintVisitor implements Visitor<Void> {
         indent--;
         return null;
     }
-    
+
     // --- NOVO MÉTODO ---
     @Override
     public Void visit(IncrementStatement statement) {
         print("IncrementStatement: " + statement.getVariableName());
         return null;
     }
-    
+
     // --- NOVO MÉTODO ---
     @Override
     public Void visit(DecrementStatement statement) {
@@ -116,6 +121,7 @@ public class PrintVisitor implements Visitor<Void> {
         indent--;
         return null;
     }
+
     @Override
     public Void visit(VariableExpression expression) {
         print("VariableExpression: " + expression.getName());
@@ -123,7 +129,8 @@ public class PrintVisitor implements Visitor<Void> {
     }
 
     // --- MUDANÇA (4 métodos removidos, 1 adicionado) ---
-    // (visit(Number...), visit(Float...), visit(String...), visit(Boolean...) REMOVIDOS)
+    // (visit(Number...), visit(Float...), visit(String...), visit(Boolean...)
+    // REMOVIDOS)
 
     /**
      * Visita um nó LiteralExpression (Number, Float, String, Boolean).
