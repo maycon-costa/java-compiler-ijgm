@@ -1,0 +1,61 @@
+int i;
+int j;
+float f; // <--- Variável nova
+
+// --- Teste Original (Loop Aninhado, i++, if) ---
+while(i < 3) {
+    j = 0;
+    while(j < 10) {
+        // (Vou remover os prints internos para um log menor)
+        j++; // Teste do j++
+    }
+    i = i + 1;
+    
+    if ((2 < 5) != true) {
+        print "Nao deve entrar aqui";
+    } else {
+        print "Entrou no ELSE (correto)";
+    }
+}
+print "Fim do Loop 1. Valor de i:";
+print i; // Esperado: 3
+
+
+// --- Teste do i-- (Inteiro) ---
+print "--- Testando Decremento INT ---";
+while (i > 0) {
+    print "Valor de i (decremento):";
+    print i;
+    i--; // Teste do i--
+}
+print "Fim do Loop 2. Valor de i:";
+print i; // Esperado: 0
+
+
+// --- NOVO TESTE (CORREÇÃO FURO #2) ---
+print "--- Testando Decremento FLOAT ---";
+f = 10.5;
+
+print "Float inicial:";
+print f; // Esperado: 10.5
+
+f++;
+print "Float (f++):";
+print f; // Esperado: 11.5
+
+f++;
+print "Float (f++):";
+print f; // Esperado: 12.5
+
+f--;
+print "Float (f--):";
+print f; // Esperado: 11.5
+
+f--;
+print "Float (f--):";
+print f; // Esperado: 10.5
+
+print "Fim do teste de float.";
+if (10){
+    
+}

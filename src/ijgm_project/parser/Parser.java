@@ -2,6 +2,7 @@ package ijgm_project.parser;
 
 import ijgm_project.lexer.Token;
 import ijgm_project.lexer.TokenType;
+import static ijgm_project.lexer.TokenType.*;
 import ijgm_project.parser.ast.*;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -16,6 +17,7 @@ import java.util.List;
 public class Parser {
     private final Iterator<Token> tokens;
     private Token currentToken;
+    private Token previousToken;
     private boolean hadError = false;
 
     public Parser(List<Token> tokens) {
@@ -28,6 +30,7 @@ public class Parser {
      */
     private void advance() {
         if (tokens.hasNext()) {
+            previousToken = currentToken;
             currentToken = tokens.next();
         } else {
             // Cria um token EOF (End Of File) para sinalizar o fim da análise
@@ -97,13 +100,12 @@ public class Parser {
         List<Statement> statements = new ArrayList<>();
 
         // 1. Analisa as Declarações (devem vir no início)
-        while (currentToken.getType() == TokenType.INT || currentToken.getType() == TokenType.FLOAT ||
-                currentToken.getType() == TokenType.BOOL || currentToken.getType() == TokenType.STRING_TYPE) {
+        while (check(INT, FLOAT, STRING, BOOL)) {
             statements.add(parseDeclaration());
         }
 
         // 2. Analisa os Comandos
-        while (currentToken.getType() != TokenType.EOF) {
+        while (!check(EOF)) {
             statements.add(parseStatement());
         }
 
@@ -133,33 +135,35 @@ public class Parser {
      * Regra: Comando -> Atribuição | Condicional | Repetição | Print
      */
     private Statement parseStatement() {
-        return switch (currentToken.getType()) {
-            case IDENTIFIER -> parseAssignment();
-            case OPEN_BRACE -> parseScope();
-            case PRINT -> parsePrintStatement();
-            case WHILE -> parseWhileStatement();
-            case IF -> parseIfStatement();
-            // case OPEN_BRACE -> parseBlockStatement(); // <-- ESTA ERA A LINHA DO ERRO (REMOVIDA)
-            default -> {
-                // Erro: Token inesperado.
-                reportError("Token inesperado no início de um comando: " + currentToken.getType());
-                // Tenta pular para o próximo comando
-                synchronize();
-                // Lança exceção para parar a avaliação desta regra
-                throw new RuntimeException("Token inesperado: " + currentToken.getType() +
-                        " na linha " + currentToken.getLine() + ", coluna " + currentToken.getColumn());
-            }
-        };
+
+        if (match(IDENTIFIER))
+            return parseAssignmentOrIncrementOrDecrement();
+        if (match(OPEN_BRACE))
+            return parseScope();
+        if (match(PRINT))
+            return parsePrintStatement();
+        if (match(WHILE))
+            return parseWhileStatement();
+        if (match(IF))
+            return parseIfStatement();
+
+        // Erro: Token inesperado.
+        reportError("Token inesperado no início de um comando: " + currentToken.getType());
+        // Tenta pular para o próximo comando
+        synchronize();
+        // Lança exceção para parar a avaliação desta regra
+        throw new RuntimeException("Token inesperado: " + currentToken.getType() +
+                " na linha " + currentToken.getLine() + ", coluna " + currentToken.getColumn());
+
     }
 
     private Statement parseScope() {
-        consume(TokenType.OPEN_BRACE);
         List<Statement> statements = new ArrayList<>();
-        while (currentToken.getType() != TokenType.CLOSE_BRACE && currentToken.getType() != TokenType.EOF) {
+        while (!check(CLOSE_BRACE, EOF)) {
             statements.add(parseStatement());
         }
-        
-        if(currentToken.getType() == TokenType.EOF) {
+
+        if (currentToken.getType() == TokenType.EOF) {
             reportError("Escopo não fechado. Esperado '}' mas encontrou Fim de Arquivo.");
         } else {
             consume(TokenType.CLOSE_BRACE); // Consome o '}'
@@ -178,8 +182,8 @@ public class Parser {
             // O parser original só permitia comandos dentro de blocos (não declarações)
             statements.add(parseStatement());
         }
-        
-        if(currentToken.getType() == TokenType.EOF) {
+
+        if (currentToken.getType() == TokenType.EOF) {
             reportError("Bloco não fechado. Esperado '}' mas encontrou Fim de Arquivo.");
         } else {
             consume(TokenType.CLOSE_BRACE); // Consome o '}'
@@ -189,21 +193,44 @@ public class Parser {
 
     /**
      * Regra: Atribuição -> id = Expressao ;
+     * OU
+     * Regra: Incremento -> id ++ ;
+     * OU
+     * Regra: Decremento -> id -- ;
      */
-    private Statement parseAssignment() {
-        String varName = currentToken.getValue();
-        consume(TokenType.IDENTIFIER);
-        consume(TokenType.ASSIGN);
-        Expression expr = parseExpression();
-        consume(TokenType.SEMICOLON);
-        return new AssignStatement(varName, expr);
+    private Statement parseAssignmentOrIncrementOrDecrement() {
+        String varName = previous().getValue();
+        if (null == currentToken.getType()) {
+            reportError("Esperado '=', '++' ou '--' após o identificador '" + varName + "'");
+            synchronize();
+            throw new RuntimeException("Sintaxe de atribuição, incremento ou decremento inválida.");
+        }
+
+        if (match(ASSIGN)) {
+            Expression expr = parseExpression();
+            consume(TokenType.SEMICOLON);
+            return new AssignStatement(varName, expr);
+        }
+
+        if (match(INCREMENT)) {
+            consume(TokenType.SEMICOLON);
+            return new IncrementStatement(varName);
+        }
+
+        if (match(DECREMENT)) {
+            consume(TokenType.SEMICOLON);
+            return new DecrementStatement(varName);
+        }
+
+        reportError("Esperado '=', '++' ou '--' após o identificador '" + varName + "'");
+        synchronize();
+        throw new RuntimeException("Sintaxe de atribuição, incremento ou decremento inválida.");
     }
 
     /**
      * Regra: Print -> print Expressao ;
      */
     private Statement parsePrintStatement() {
-        consume(TokenType.PRINT);
         Expression expr = parseExpression();
         consume(TokenType.SEMICOLON);
         return new PrintStatement(expr);
@@ -213,7 +240,6 @@ public class Parser {
      * Regra: Repetição (While) -> while (Expressao) Bloco
      */
     private Statement parseWhileStatement() {
-        consume(TokenType.WHILE);
         consume(TokenType.OPEN_PAREN);
         Expression condition = parseExpression();
         consume(TokenType.CLOSE_PAREN);
@@ -225,7 +251,6 @@ public class Parser {
      * Regra: Condicional (If-Else) -> if (Expressao) Bloco [else Bloco]
      */
     private Statement parseIfStatement() {
-        consume(TokenType.IF);
         consume(TokenType.OPEN_PAREN);
         Expression condition = parseExpression();
         consume(TokenType.CLOSE_PAREN);
@@ -254,9 +279,8 @@ public class Parser {
      */
     private Expression parseLogicalOR() {
         Expression left = parseLogicalAND();
-        while (currentToken.getType() == TokenType.OR) {
-            TokenType operator = currentToken.getType();
-            consume(operator); // <--- CORRIGIDO (era advance())
+        while (match(OR)) {
+            TokenType operator = previous().getType();
             Expression right = parseLogicalAND();
             left = new BinaryExpression(left, operator, right);
         }
@@ -268,9 +292,8 @@ public class Parser {
      */
     private Expression parseLogicalAND() {
         Expression left = parseEquality();
-        while (currentToken.getType() == TokenType.AND) {
-            TokenType operator = currentToken.getType();
-            consume(operator); // <--- CORRIGIDO (era advance())
+        while (match(AND)) {
+            TokenType operator = previous().getType();
             Expression right = parseEquality();
             left = new BinaryExpression(left, operator, right);
         }
@@ -282,9 +305,8 @@ public class Parser {
      */
     private Expression parseEquality() {
         Expression left = parseComparison();
-        while (currentToken.getType() == TokenType.EQUAL_EQUAL || currentToken.getType() == TokenType.NOT_EQUAL) {
-            TokenType operator = currentToken.getType();
-            consume(operator); // <--- CORRIGIDO (era advance())
+        while (match(EQUAL_EQUAL, NOT_EQUAL)) {
+            TokenType operator = previous().getType();
             Expression right = parseComparison();
             left = new BinaryExpression(left, operator, right);
         }
@@ -295,35 +317,31 @@ public class Parser {
      * Comparação (>, <, >=, <=)
      */
 
-     private Expression parseComparison() {
-    Expression left = parseAddition();
+    private Expression parseComparison() {
+        Expression left = parseAddition();
 
-    // Troca o 'while' (que permite repetição) por um 'if' (que permite no máximo uma vez)
-    if (currentToken.getType() == TokenType.GREATER_THAN || 
-        currentToken.getType() == TokenType.GREATER_EQUAL ||
-        currentToken.getType() == TokenType.LESS_THAN || 
-        currentToken.getType() == TokenType.LESS_EQUAL) {
-        
-        TokenType operator = currentToken.getType();
-        consume(operator);
-        Expression right = parseAddition();
-        left = new BinaryExpression(left, operator, right);
-        
-        // Se houver mais tokens de comparação, eles serão processados pela próxima chamada 
-        // de parseExpression() (ou causarão um erro dependendo da regra superior).
-        // No caso de 'a > b > c', o segundo '>' causaria um erro sintático aqui.
-    }
-    return left;
+        // Troca o 'while' (que permite repetição) por um 'if' (que permite no máximo
+        // uma vez)
+        if (match(GREATER_EQUAL, GREATER_THAN, LESS_EQUAL, LESS_THAN)) {
+            TokenType operator = previous().getType();
+            Expression right = parseAddition();
+            left = new BinaryExpression(left, operator, right);
+
+            // Se houver mais tokens de comparação, eles serão processados pela próxima
+            // chamada
+            // de parseExpression() (ou causarão um erro dependendo da regra superior).
+            // No caso de 'a > b > c', o segundo '>' causaria um erro sintático aqui.
+        }
+        return left;
     }
 
-/**
- * Adição e Subtração (+, -)
- */
-private Expression parseAddition() {
-    Expression left = parseMultiplication();
-        while (currentToken.getType() == TokenType.PLUS || currentToken.getType() == TokenType.MINUS) {
-            TokenType operator = currentToken.getType();
-            consume(operator); // <--- CORRIGIDO (era advance())
+    /**
+     * Adição e Subtração (+, -)
+     */
+    private Expression parseAddition() {
+        Expression left = parseMultiplication();
+        while (match(PLUS, MINUS)) {
+            TokenType operator = previous().getType();
             Expression right = parseMultiplication();
             left = new BinaryExpression(left, operator, right);
         }
@@ -335,9 +353,8 @@ private Expression parseAddition() {
      */
     private Expression parseMultiplication() {
         Expression left = parsePrimary();
-        while (currentToken.getType() == TokenType.MULTIPLY || currentToken.getType() == TokenType.DIVIDE) {
-            TokenType operator = currentToken.getType();
-            consume(operator); // <--- CORRIGIDO (era advance())
+        while (match(MULTIPLY, DIVIDE)) {
+            TokenType operator = previous().getType();
             Expression right = parsePrimary();
             left = new BinaryExpression(left, operator, right);
         }
@@ -349,50 +366,56 @@ private Expression parseAddition() {
      * Precedência)
      */
     private Expression parsePrimary() {
-        return switch (currentToken.getType()) {
-            case NUMBER -> {
-                NumberExpression expr = new NumberExpression(currentToken.getValue());
-                consume(TokenType.NUMBER);
-                yield expr;
-            }
-            case FLOAT_LITERAL -> {
-                FloatExpression expr = new FloatExpression(currentToken.getValue());
-                consume(TokenType.FLOAT_LITERAL);
-                yield expr;
-            }
-            case IDENTIFIER -> {
-                VariableExpression expr = new VariableExpression(currentToken.getValue());
-                consume(TokenType.IDENTIFIER);
-                yield expr;
-            }
-            case STRING -> {
-                StringExpression expr = new StringExpression(currentToken.getValue());
-                consume(TokenType.STRING);
-                yield expr;
-            }
-            case TRUE -> {
-                consume(TokenType.TRUE);
-                yield new BooleanExpression(true);
-            }
-            case FALSE -> {
-                consume(TokenType.FALSE);
-                yield new BooleanExpression(false);
-            }
-            case OPEN_PAREN -> {
-                consume(TokenType.OPEN_PAREN);
-                Expression expr = parseExpression();
-                consume(TokenType.CLOSE_PAREN);
-                yield expr;
-            }
-            default -> {
-                // Erro: Token inesperado.
-                reportError("Token inesperado na expressão: " + currentToken.getType());
-                // Tenta sincronizar para continuar a análise
-                synchronize();
-                // Lança exceção para parar a avaliação desta regra
-                throw new RuntimeException("Expressão primária inválida: " + currentToken.getType() +
-                        " na linha " + currentToken.getLine() + ", coluna " + currentToken.getColumn());
-            }
-        };
+        if (match(NUMBER))
+            return new NumberExpression(previous().getValue());
+        if (match(FLOAT_LITERAL))
+            return new FloatExpression(previous().getValue());
+        if (match(IDENTIFIER))
+            return new VariableExpression(previous().getValue());
+        if (match(STRING))
+            return new StringExpression(previous().getValue());
+        if (match(TRUE))
+            return new BooleanExpression(true);
+        if (match(FALSE))
+            return new BooleanExpression(false);
+        if (match(OPEN_PAREN)) {
+            return groupExpression();
+        }
+
+        // Erro: Token inesperado.
+        reportError("Token inesperado na expressão: " + currentToken.getType());
+        // Tenta sincronizar para continuar a análise
+        synchronize();
+        // Lança exceção para parar a avaliação desta regra
+        throw new RuntimeException("Expressão primária inválida: " + currentToken.getType() +
+                " na linha " + currentToken.getLine() + ", coluna " + currentToken.getColumn());
+    }
+
+    private Expression groupExpression() {
+        Expression expr = parseExpression();
+        consume(TokenType.CLOSE_PAREN);
+        return expr;
+    }
+
+    private boolean check(TokenType... types) {
+        for (TokenType type : types) {
+            if (currentToken.getType() == type)
+                return true;
+        }
+
+        return false;
+    }
+
+    private boolean match(TokenType... types) {
+        if (check(types)) {
+            advance();
+            return true;
+        }
+
+        return false;
+    }
+
+    Token previous() {
+        return previousToken;
     }
 }

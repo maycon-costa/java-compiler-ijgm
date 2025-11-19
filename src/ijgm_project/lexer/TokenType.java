@@ -42,6 +42,10 @@ public enum TokenType {
     MINUS, // -
     MULTIPLY, // *
     DIVIDE, // /
+    
+    // --- NOVOS TOKENS ---
+    INCREMENT, // ++ 
+    DECREMENT, // --
 
     // Operadores de comparação e lógicos
     GREATER_THAN, // >

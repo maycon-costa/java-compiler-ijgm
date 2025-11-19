@@ -133,8 +133,13 @@ public class Lexer {
             case '{' -> addToken(TokenType.OPEN_BRACE);
             case '}' -> addToken(TokenType.CLOSE_BRACE);
             case ';' -> addToken(TokenType.SEMICOLON);
-            case '+' -> addToken(TokenType.PLUS);
-            case '-' -> addToken(TokenType.MINUS);
+            
+            // --- MUDANÇA (PLUS) ---
+            case '+' -> addToken(match('+') ? TokenType.INCREMENT : TokenType.PLUS);
+
+            // --- MUDANÇA (MINUS) ---
+            case '-' -> addToken(match('-') ? TokenType.DECREMENT : TokenType.MINUS);
+            
             case '*' -> addToken(TokenType.MULTIPLY);
             case '=' -> addToken(match('=') ? TokenType.EQUAL_EQUAL : TokenType.ASSIGN);
             case '!' -> {
@@ -187,16 +192,7 @@ public class Lexer {
                 }
             }
         }
-        // Símbolos de um caractere
-        // Símbolos de um ou dois caracteres (usando match)
-        // Comentários ou Divisão
-        // Literais de String
-        // Como advance() já cuidou de line++, esses dois cases podem ser unidos em um só
-        // Espaços em branco (ignorados)
-        // Ignora
-        // 'advance()' já cuidou de 'line' e 'column'
-        // Default: Números, Identificadores ou Erros
-            }
+    }
 
     /**
      * Consome um comentário de bloco (ex: /* ... * /).
